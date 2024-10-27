@@ -1,26 +1,76 @@
-import { Injectable } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateOrderDto } from './dto/create-order.dto';
 import { UpdateOrderDto } from './dto/update-order.dto';
+import { PrismaService } from 'src/prisma.service';
 
 @Injectable()
 export class OrderService {
-  create(createOrderDto: CreateOrderDto) {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async create(createOrderDto: CreateOrderDto) {
     return 'This action adds a new order';
   }
 
-  findAll() {
-    return `This action returns all order`;
+  async findAll() {
+    try {
+      const orders = await this.prisma.order.findMany();
+      if (!orders.length) {
+        throw new NotFoundException('No orders found');
+      }
+      return orders;
+    } catch (error) {
+      console.error(error);
+      throw new InternalServerErrorException('Error getting orders');
+    }
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} order`;
+  async findOne(id: number) {
+    try {
+      const order = await this.prisma.order.findUnique({
+        where: { id },
+      });
+      if (!order) {
+        throw new NotFoundException('Order not found');
+      }
+      return order;
+    } catch (error) {
+      console.error(error);
+      throw new InternalServerErrorException('Error getting order');
+    }
   }
 
-  update(id: number, updateOrderDto: UpdateOrderDto) {
-    return `This action updates a #${id} order`;
+  async update(id: number, updateOrderDto: UpdateOrderDto) {
+    try {
+      const updatedOrder = await this.prisma.order.update({
+        where: { id },
+        data: updateOrderDto,
+      });
+      return updatedOrder;
+    } catch (error) {
+      if (error.code === 'P2025') {
+        throw new NotFoundException(`Order with ID ${id} not found`);
+      }
+      console.error(error);
+      throw new InternalServerErrorException('Error updating order');
+    }
   }
 
-  remove(id: number) {
-    return `This action removes a #${id} order`;
+  async remove(id: number) {
+    try {
+      const deletedOrder = await this.prisma.order.delete({
+        where: { id },
+      });
+      return deletedOrder;
+    } catch (error) {
+      if (error.code === 'P2025') {
+        throw new NotFoundException(`Order with ID ${id} not found`);
+      }
+      console.error(error);
+      throw new InternalServerErrorException('Error removing order');
+    }
   }
 }

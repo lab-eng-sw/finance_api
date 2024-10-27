@@ -9,7 +9,8 @@ export class WalletService {
   }
 
   findAll() {
-    return `This action returns all wallet`;
+    //get - get all wallets using prisma 
+    
   }
 
   findOne(id: number) {

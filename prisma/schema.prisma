@@ -63,22 +63,28 @@ model Order {
 }
 
 model Asset {
-  id            Int          @id @default(autoincrement())
-  ticker        String
-  assetName     String
-  type          String
-  benchmark     String
-  date          DateTime
-  price         Float
-  pl            Float
-  macdim        Float
-  macdis        Float
-  macdh         Float
-  bbs           Float
-  bbl           Float
-  bbm           Float
-  rsicom        Float
-  rsivem        Float
-  assetWallet   AssetWallet? @relation(fields: [assetWalletId], references: [id])
-  assetWalletId Int
+  id             Int          @id @default(autoincrement())
+  ticker         String
+  volume         Int
+  dailyVariation Float
+  bbi            Float
+  rsi            Int?
+  scom           Float?
+  sven           Float
+  assetName      String
+  type           String
+  benchmark      String
+  date           DateTime
+  price          Float
+  pl             Float
+  macdim         Float
+  macdis         Float
+  macdh          Float
+  bbs            Float
+  bbl            Float
+  bbm            Float
+  rsicom         Float
+  rsivem         Float
+  assetWallet    AssetWallet? @relation(fields: [assetWalletId], references: [id])
+  assetWalletId  Int
 }
