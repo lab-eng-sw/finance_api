@@ -42,15 +42,19 @@ model TransactionRecord {
 
 model AssetWallet {
   id       Int      @id @default(autoincrement())
-  ticker   String
-  boughtAt DateTime
-  soldAt   DateTime
-  profit   Float
-  quantity Int
-  wallet   Wallet?  @relation(fields: [walletId], references: [id])
+  assetId  Int
   walletId Int
-  orders   Order[]
-  assets   Asset[]
+  boughtAt DateTime
+  soldAt   DateTime?
+  profit   Float?
+  quantity Int
+
+  asset   Asset  @relation(fields: [assetId], references: [id])
+  wallet  Wallet @relation(fields: [walletId], references: [id])
+
+  orders  Order[]
+
+  @@unique([assetId, walletId])
 }
 
 model Order {
@@ -58,7 +62,7 @@ model Order {
   status        String
   price         Float
   quantity      Int
-  assetWallet   AssetWallet? @relation(fields: [assetWalletId], references: [id])
+  assetWallet   AssetWallet  @relation(fields: [assetWalletId], references: [id])
   assetWalletId Int
 }
 
@@ -85,6 +89,6 @@ model Asset {
   bbm            Float
   rsicom         Float
   rsivem         Float
-  assetWallet    AssetWallet? @relation(fields: [assetWalletId], references: [id])
-  assetWalletId  Int
+
+  assetWallets   AssetWallet[]
 }

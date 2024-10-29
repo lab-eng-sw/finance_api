@@ -16,31 +16,21 @@ export class InvestorService {
   }
 
   async findAll() {
-    try {
-      const investors = await this.prisma.investor.findMany();
-      if (!investors.length) {
-        throw new NotFoundException('No investors found');
-      }
-      return investors;
-    } catch (error) {
-      console.error(error);
-      throw new InternalServerErrorException('Error fetching investors');
+    const investors = await this.prisma.investor.findMany();
+    if (!investors.length) {
+      throw new NotFoundException('No investors found');
     }
+    return investors;
   }
 
   async findOne(id: number) {
-    try {
-      const investor = await this.prisma.investor.findUnique({
-        where: { id },
-      });
-      if (!investor) {
-        throw new NotFoundException(`Investor with ID ${id} not found`);
-      }
-      return investor;
-    } catch (error) {
-      console.error(error);
-      throw new InternalServerErrorException('Error fetching investor');
+    const investor = await this.prisma.investor.findUnique({
+      where: { id },
+    });
+    if (!investor) {
+      throw new NotFoundException(`Investor with ID ${id} not found`);
     }
+    return investor;
   }
 
   async update(id: number, updateInvestorDto: UpdateInvestorDto) {
@@ -52,11 +42,8 @@ export class InvestorService {
       return updatedInvestor;
     } catch (error) {
       if (error.code === 'P2025') {
-        // Prisma error code for record not found
         throw new NotFoundException(`Investor with ID ${id} not found`);
       }
-      console.error(error);
-      throw new InternalServerErrorException('Error updating investor');
     }
   }
 
@@ -68,11 +55,8 @@ export class InvestorService {
       return deletedInvestor;
     } catch (error) {
       if (error.code === 'P2025') {
-        // Prisma error code for record not found
         throw new NotFoundException(`Investor with ID ${id} not found`);
       }
-      console.error(error);
-      throw new InternalServerErrorException('Error removing investor');
     }
   }
 }

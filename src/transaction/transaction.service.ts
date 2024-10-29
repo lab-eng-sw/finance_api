@@ -16,31 +16,21 @@ export class TransactionService {
   }
 
   async findAll() {
-    try {
-      const transactions = await this.prisma.transactionRecord.findMany();
-      if (!transactions.length) {
-        throw new NotFoundException('No transactions found');
-      }
-      return transactions;
-    } catch (error) {
-      console.error(error);
-      throw new InternalServerErrorException('Error fetching transactions');
+    const transactions = await this.prisma.transactionRecord.findMany();
+    if (!transactions.length) {
+      throw new NotFoundException('No transactions found');
     }
+    return transactions;
   }
 
   async findOne(id: number) {
-    try {
-      const transaction = await this.prisma.transactionRecord.findUnique({
-        where: { id },
-      });
-      if (!transaction) {
-        throw new NotFoundException(`Transaction with ID ${id} not found`);
-      }
-      return transaction;
-    } catch (error) {
-      console.error(error);
-      throw new InternalServerErrorException('Error fetching transaction');
+    const transaction = await this.prisma.transactionRecord.findUnique({
+      where: { id },
+    });
+    if (!transaction) {
+      throw new NotFoundException(`Transaction with ID ${id} not found`);
     }
+    return transaction;
   }
 
   async update(id: number, updateTransactionDto: UpdateTransactionDto) {
@@ -52,11 +42,8 @@ export class TransactionService {
       return updatedTransaction;
     } catch (error) {
       if (error.code === 'P2025') {
-        // Prisma error code for record not found
         throw new NotFoundException(`Transaction with ID ${id} not found`);
       }
-      console.error(error);
-      throw new InternalServerErrorException('Error updating transaction');
     }
   }
 
@@ -70,8 +57,6 @@ export class TransactionService {
       if (error.code === 'P2025') {
         throw new NotFoundException(`Transaction with ID ${id} not found`);
       }
-      console.error(error);
-      throw new InternalServerErrorException('Error removing transaction');
     }
   }
 }

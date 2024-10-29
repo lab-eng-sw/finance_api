@@ -1,20 +1,32 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { CreateWalletDto } from './dto/create-wallet.dto';
 import { UpdateWalletDto } from './dto/update-wallet.dto';
+import { PrismaService } from 'src/prisma.service';
 
 @Injectable()
 export class WalletService {
+  constructor(private readonly prisma: PrismaService) {}
+
   create(createWalletDto: CreateWalletDto) {
     return 'This action adds a new wallet';
   }
 
-  findAll() {
-    //get - get all wallets using prisma 
-    
+  async findAll() {
+    const wallets = await this.prisma.wallet.findMany();
+    if (!wallets.length) {
+      throw new NotFoundException('No wallets found');
+    }
+    return wallets;
   }
 
-  findOne(id: number) {
-    return `This action returns a #${id} wallet`;
+  async findOne(id: number) {
+    const wallet = await this.prisma.wallet.findUnique({
+      where: { id },
+    });
+    if (!wallet) {
+      throw new NotFoundException(`Wallet with ID ${id} not found`);
+    }
+    return wallet;
   }
 
   update(id: number, updateWalletDto: UpdateWalletDto) {

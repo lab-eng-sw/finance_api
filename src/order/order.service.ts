@@ -24,18 +24,13 @@ export class OrderService {
   }
 
   async findOne(id: number) {
-    try {
-      const order = await this.prisma.order.findUnique({
-        where: { id },
-      });
-      if (!order) {
-        throw new NotFoundException('Order not found');
-      }
-      return order;
-    } catch (error) {
-      console.error(error);
-      throw new InternalServerErrorException('Error getting order');
+    const order = await this.prisma.order.findUnique({
+      where: { id },
+    });
+    if (!order) {
+      throw new NotFoundException('Order not found');
     }
+    return order;
   }
 
   async update(id: number, updateOrderDto: UpdateOrderDto) {
@@ -49,8 +44,6 @@ export class OrderService {
       if (error.code === 'P2025') {
         throw new NotFoundException(`Order with ID ${id} not found`);
       }
-      console.error(error);
-      throw new InternalServerErrorException('Error updating order');
     }
   }
 
@@ -64,8 +57,6 @@ export class OrderService {
       if (error.code === 'P2025') {
         throw new NotFoundException(`Order with ID ${id} not found`);
       }
-      console.error(error);
-      throw new InternalServerErrorException('Error removing order');
     }
   }
 }
