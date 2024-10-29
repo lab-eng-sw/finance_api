@@ -16,16 +16,11 @@ export class OrderService {
   }
 
   async findAll() {
-    try {
-      const orders = await this.prisma.order.findMany();
-      if (!orders.length) {
-        throw new NotFoundException('No orders found');
-      }
-      return orders;
-    } catch (error) {
-      console.error(error);
-      throw new InternalServerErrorException('Error getting orders');
+    const orders = await this.prisma.order.findMany();
+    if (!orders.length) {
+      throw new NotFoundException('No orders found');
     }
+    return orders;
   }
 
   async findOne(id: number) {
