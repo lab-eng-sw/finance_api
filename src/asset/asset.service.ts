@@ -23,12 +23,16 @@ export class AssetService {
     return assets;
   }
 
-  async findOne(id: number) {
-    const asset = await this.prisma.asset.findUnique({
-      where: { id },
+  async findOne(filter: { [key: string]: any }) {
+    const asset = await this.prisma.asset.findMany({
+      where: filter,
+      orderBy: { date: 'desc' },
+      take: 1,
     });
     if (!asset) {
-      throw new NotFoundException(`Asset with ID ${id} not found`);
+      throw new NotFoundException(
+        `Asset with filter ${JSON.stringify(filter)} not found`,
+      );
     }
     return asset;
   }
