@@ -22,11 +22,15 @@ export class AssetController {
   }
 
   @Get()
-  findAll() {
-    return this.assetService.findAll();
+  findAll(
+    @Query('field') field?: string,
+    @Query('direction') direction: 'asc' | 'desc' = 'asc',
+  ) {
+    const orderBy = field ? { field, direction } : undefined;
+    return this.assetService.findAll(orderBy);
   }
 
-  @Get()
+  @Get('/find')
   findOne(@Query() filter: { [key: string]: any }) {
     return this.assetService.findOne(filter);
   }

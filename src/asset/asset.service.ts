@@ -15,14 +15,20 @@ export class AssetService {
     return 'This action adds a new asset';
   }
 
-  async findAll() {
-    const assets = await this.prisma.asset.findMany();
+  async findAll(orderBy?: { field: string; direction: 'asc' | 'desc' }) {
+    const assets = await this.prisma.asset.findMany({
+      orderBy: orderBy ? { [orderBy.field]: orderBy.direction } : undefined,
+    });
+  
     if (!assets.length) {
       throw new NotFoundException('No assets found');
     }
+  
     return assets;
   }
+  
 
+  
   async findOne(filter: { [key: string]: any }) {
     const asset = await this.prisma.asset.findMany({
       where: filter,
