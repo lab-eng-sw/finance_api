@@ -7,8 +7,10 @@ import { PrismaService } from 'src/prisma.service';
 export class WalletService {
   constructor(private readonly prisma: PrismaService) {}
 
-  create(createWalletDto: CreateWalletDto) {
-    return 'This action adds a new wallet';
+  async create(createWalletDto: CreateWalletDto) {
+    return await this.prisma.wallet.create({
+      data: createWalletDto,
+    });
   }
 
   async findAll() {
