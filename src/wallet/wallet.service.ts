@@ -22,6 +22,7 @@ export class WalletService {
   async findOne(id: number) {
     const wallet = await this.prisma.wallet.findUnique({
       where: { id },
+      include: { assets: true },
     });
     if (!wallet) {
       throw new NotFoundException(`Wallet with ID ${id} not found`);
