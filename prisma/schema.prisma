@@ -1,9 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -24,9 +21,9 @@ model Investor {
 
 model Wallet {
   id            Int                 @id @default(autoincrement())
-  totalInvested Float
-  active        Boolean?            @default(false)
-  investor      Investor?           @relation(fields: [investorId], references: [id])
+  totalInvested Decimal
+  active        Boolean             @default(false)
+  investor      Investor            @relation(fields: [investorId], references: [id])
   investorId    Int                 @unique
   transactions  TransactionRecord[]
   assets        AssetWallet[]
@@ -35,60 +32,60 @@ model Wallet {
 model TransactionRecord {
   id       Int      @id @default(autoincrement())
   date     DateTime
-  value    Boolean  @default(false)
-  wallet   Wallet?  @relation(fields: [walletId], references: [id])
+  value    Decimal
+  wallet   Wallet   @relation(fields: [walletId], references: [id])
   walletId Int
 }
 
 model AssetWallet {
-  id       Int      @id @default(autoincrement())
+  id       Int       @id @default(autoincrement())
   assetId  Int
   walletId Int
   boughtAt DateTime
   soldAt   DateTime?
-  profit   Float?
+  profit   Decimal?
   quantity Int
 
-  asset   Asset  @relation(fields: [assetId], references: [id])
-  wallet  Wallet @relation(fields: [walletId], references: [id])
+  asset  Asset  @relation(fields: [assetId], references: [id])
+  wallet Wallet @relation(fields: [walletId], references: [id])
 
-  orders  Order[]
+  orders Order[]
 
   @@unique([assetId, walletId])
 }
 
 model Order {
-  id            Int          @id @default(autoincrement())
+  id            Int         @id @default(autoincrement())
   status        String
-  price         Float
+  price         Decimal
   quantity      Int
-  assetWallet   AssetWallet  @relation(fields: [assetWalletId], references: [id])
+  assetWallet   AssetWallet @relation(fields: [assetWalletId], references: [id])
   assetWalletId Int
 }
 
 model Asset {
-  id             Int          @id @default(autoincrement())
+  id             Int      @id @default(autoincrement())
   ticker         String
   volume         Int
-  dailyVariation Float
-  bbi            Float
+  dailyVariation Decimal
+  bbi            Decimal
   rsi            Int?
-  scom           Float?
-  sven           Float
+  scom           Decimal?
+  sven           Decimal
   assetName      String
   type           String
   benchmark      String
   date           DateTime
-  price          Float
-  pl             Float
-  macdim         Float
-  macdis         Float
-  macdh          Float
-  bbs            Float
-  bbl            Float
-  bbm            Float
-  rsicom         Float
-  rsivem         Float
+  price          Decimal
+  pl             Decimal
+  macdim         Decimal
+  macdis         Decimal
+  macdh          Decimal
+  bbs            Decimal
+  bbl            Decimal
+  bbm            Decimal
+  rsicom         Decimal
+  rsivem         Decimal
 
-  assetWallets   AssetWallet[]
+  assetWallets AssetWallet[]
 }
