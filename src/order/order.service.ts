@@ -12,7 +12,60 @@ export class OrderService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createOrderDto: CreateOrderDto) {
-    return 'This action adds a new order';
+    const wallet = await this.prisma.wallet.findUnique({
+      where: {id: createOrderDto.walletId}
+    })
+
+    if(!wallet){
+      throw new NotFoundException('No wallet found');
+    }
+
+    const assets = await Promise.all(createOrderDto.assets.map(async ({ticker}) => await this.prisma.asset.findFirst({
+      where: {
+        ticker
+      }
+    })))
+
+    const assetWalletDTO = assets.map((asset)=>{
+      const {quantity, ticker} = createOrderDto.assets.find((assetInput) => assetInput.ticker === asset.ticker)
+      return {
+        ticker,
+        boughtAt: new Date(),
+        quantity,
+        walletId: createOrderDto.walletId 
+      }
+    })
+
+
+    const assetWallet =  await this.prisma.assetWallet.createMany({
+      data: {
+        ...assetWalletDTO
+
+      }
+    })
+
+
+
+    const order = await this.prisma.order.create({
+      data: {
+        status: 'CONFIRMED',
+        price: assets.reduce((sum, asset) => sum + Number(asset.price),0),  // You can update with the correct price if needed
+        quantity: createOrderDto.assets.reduce((sum, asset) => sum + asset.quantity, 0),  // Example, adjust logic as needed
+        assetWallet: {
+          connectOrCreate: assetWalletDTO.map((assetWallet) => ({
+            where: {
+              ticker: assetWallet.ticker
+            },
+            create: {
+              walletId: assetWallet.walletId,
+              ticker: assetWallet.ticker,
+              boughtAt: assetWallet.boughtAt,
+              quantity: assetWallet.quantity
+            }
+          }))
+        }
+      }
+    });
   }
 
   async findAll() {

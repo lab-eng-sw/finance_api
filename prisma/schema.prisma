@@ -35,23 +35,25 @@ model TransactionRecord {
   value    Decimal
   wallet   Wallet   @relation(fields: [walletId], references: [id])
   walletId Int
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt    DateTime @updatedAt @db.Timestamptz(6)
 }
 
 model AssetWallet {
   id       Int       @id @default(autoincrement())
-  assetId  Int
+  ticker   Int
   walletId Int
   boughtAt DateTime
   soldAt   DateTime?
   profit   Decimal?
   quantity Int
 
-  asset  Asset  @relation(fields: [assetId], references: [id])
+  asset  Asset  @relation(fields: [ticker], references: [id])
   wallet Wallet @relation(fields: [walletId], references: [id])
 
   orders Order[]
 
-  @@unique([assetId, walletId])
+  @@unique([ticker, walletId])
 }
 
 model Order {
@@ -65,7 +67,7 @@ model Order {
 
 model Asset {
   id             Int      @id @default(autoincrement())
-  ticker         String
+  ticker         String   @unique
   volume         Int
   dailyVariation Decimal
   bbi            Decimal
