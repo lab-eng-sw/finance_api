@@ -38,7 +38,7 @@ export class OrderService {
         (assetInput) => assetInput.ticker === asset.ticker
       );
       return {
-        ticker: asset.id,  // Here we use asset.id, assuming it's an integer
+        ticker,  // Here we use asset.id, assuming it's an integer
         boughtAt: new Date(),
         quantity,
         walletId: createOrderDto.walletId
@@ -51,7 +51,7 @@ export class OrderService {
         (assetInput) => assetInput.ticker === asset.ticker
       );
       return {
-        ticker: ticker,  // Again, use asset.id here
+        ticker,
         price: asset.price,
         quantity,
         walletId: createOrderDto.walletId
