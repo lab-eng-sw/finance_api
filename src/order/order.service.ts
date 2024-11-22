@@ -14,57 +14,56 @@ export class OrderService {
 
   async create(createOrderDto: CreateOrderDto) {
     const wallet = await this.prisma.wallet.findUnique({
-      where: { id: createOrderDto.walletId },
+      where: { id: createOrderDto.walletId }
     });
-
+  
     if (!wallet) {
       throw new NotFoundException('No wallet found');
     }
-
+  
     // Fetch assets based on tickers provided in the order
     const assets = await Promise.all(
-      createOrderDto.assets.map(
-        async ({ ticker }) =>
-          await this.prisma.asset.findFirst({
-            where: {
-              ticker,
-            },
-          }),
-      ),
+      createOrderDto.assets.map(async ({ ticker }) =>
+        await this.prisma.asset.findFirst({
+          where: {
+            ticker
+          }
+        })
+      )
     );
-
+  
     // Create AssetWalletDTO that contains the asset wallet details
     const assetWalletDTO = assets.map((asset) => {
       const { quantity, ticker } = createOrderDto.assets.find(
-        (assetInput) => assetInput.ticker === asset.ticker,
+        (assetInput) => assetInput.ticker === asset.ticker
       );
       return {
-        ticker: asset.id, // Here we use asset.id, assuming it's an integer
+        ticker: asset.id,  // Here we use asset.id, assuming it's an integer
         boughtAt: new Date(),
         quantity,
-        walletId: createOrderDto.walletId,
+        walletId: createOrderDto.walletId
       };
     });
-
+  
     // Map to prepare the asset details for the order creation
     const assetMapper = assets.map((asset) => {
       const { quantity, ticker } = createOrderDto.assets.find(
-        (assetInput) => assetInput.ticker === asset.ticker,
+        (assetInput) => assetInput.ticker === asset.ticker
       );
       return {
-        ticker: asset.id, // Again, use asset.id here
+        ticker: asset.id,  // Again, use asset.id here
         price: asset.price,
         quantity,
-        walletId: createOrderDto.walletId,
+        walletId: createOrderDto.walletId
       };
     });
-
+  
     // Calculate the total price of the order
     const totalPrice = assetMapper.reduce(
       (sum, asset) => sum + Number(asset.price) * asset.quantity,
-      0,
+      0
     );
-
+  
     // Create the order and connect/create AssetWallets
     const order = await this.prisma.order.create({
       data: {
@@ -80,19 +79,19 @@ export class OrderService {
             ticker: assetWallet.ticker,
             boughtAt: assetWallet.boughtAt,
             quantity: assetWallet.quantity,
-          }))[0],
+          })) as unknown as Prisma.AssetWalletCreateWithoutOrdersInput,
         },
       },
     });
-
+  
     // Update the wallet with the new total invested amount
     await this.prisma.wallet.update({
       where: {
-        id: createOrderDto.walletId,
+        id: createOrderDto.walletId
       },
       data: {
-        totalInvested: Number(wallet.totalInvested) + totalPrice,
-      },
+        totalInvested: Number(wallet.totalInvested) + totalPrice
+      }
     });
   }
 
