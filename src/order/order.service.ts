@@ -36,16 +36,6 @@ export class OrderService {
       }
     })
 
-
-    const assetWallet =  await this.prisma.assetWallet.createMany({
-      data: {
-        ...assetWalletDTO
-
-      }
-    })
-
-
-
     const order = await this.prisma.order.create({
       data: {
         status: 'CONFIRMED',
