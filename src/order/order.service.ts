@@ -51,7 +51,7 @@ export class OrderService {
         (assetInput) => assetInput.ticker === asset.ticker
       );
       return {
-        ticker: asset.id,  // Again, use asset.id here
+        ticker: ticker,  // Again, use asset.id here
         price: asset.price,
         quantity,
         walletId: createOrderDto.walletId
