@@ -66,25 +66,24 @@ export class OrderService {
     );
 
     // Create the order and connect/create AssetWallets
-    const orders = await Promise.all(
-      assetWalletDTO.map(async (assetWallet) => {
-        return await this.prisma.order.create({
-          data: {
-            status: 'CONFIRMED',
-            price: totalPrice,
+    const order = await this.prisma.order.create({
+      data: {
+        status: 'CONFIRMED',
+        price: totalPrice,
+        quantity: createOrderDto.assets.reduce(
+          (sum, asset) => sum + asset.quantity,
+          0,
+        ),
+        assetWallet: {
+          create: assetWalletDTO.map((assetWallet) => ({
+            walletId: assetWallet.walletId,
+            ticker: assetWallet.ticker,
+            boughtAt: assetWallet.boughtAt,
             quantity: assetWallet.quantity,
-            assetWallet: {
-              create: {
-                walletId: assetWallet.walletId,
-                ticker: assetWallet.ticker,
-                boughtAt: assetWallet.boughtAt,
-                quantity: assetWallet.quantity,
-              },
-            },
-          },
-        });
-      }),
-    );
+          }))[0],
+        },
+      },
+    });
 
     // Update the wallet with the new total invested amount
     await this.prisma.wallet.update({
