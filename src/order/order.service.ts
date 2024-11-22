@@ -13,38 +13,69 @@ export class OrderService {
 
   async create(createOrderDto: CreateOrderDto) {
     const wallet = await this.prisma.wallet.findUnique({
-      where: {id: createOrderDto.walletId}
-    })
-
-    if(!wallet){
+      where: { id: createOrderDto.walletId }
+    });
+  
+    if (!wallet) {
       throw new NotFoundException('No wallet found');
     }
-
-    const assets = await Promise.all(createOrderDto.assets.map(async ({ticker}) => await this.prisma.asset.findFirst({
-      where: {
-        ticker
-      }
-    })))
-
-    const assetWalletDTO = assets.map((asset)=>{
-      const {quantity, ticker} = createOrderDto.assets.find((assetInput) => assetInput.ticker === asset.ticker)
+  
+    // Fetch assets based on tickers provided in the order
+    const assets = await Promise.all(
+      createOrderDto.assets.map(async ({ ticker }) =>
+        await this.prisma.asset.findFirst({
+          where: {
+            ticker
+          }
+        })
+      )
+    );
+  
+    // Create AssetWalletDTO that contains the asset wallet details
+    const assetWalletDTO = assets.map((asset) => {
+      const { quantity, ticker } = createOrderDto.assets.find(
+        (assetInput) => assetInput.ticker === asset.ticker
+      );
       return {
-        ticker,
+        ticker: asset.id,  // Here we use asset.id, assuming it's an integer
         boughtAt: new Date(),
         quantity,
-        walletId: createOrderDto.walletId 
-      }
-    })
-
+        walletId: createOrderDto.walletId
+      };
+    });
+  
+    // Map to prepare the asset details for the order creation
+    const assetMapper = assets.map((asset) => {
+      const { quantity, ticker } = createOrderDto.assets.find(
+        (assetInput) => assetInput.ticker === asset.ticker
+      );
+      return {
+        ticker: asset.id,  // Again, use asset.id here
+        price: asset.price,
+        quantity,
+        walletId: createOrderDto.walletId
+      };
+    });
+  
+    // Calculate the total price of the order
+    const totalPrice = assetMapper.reduce(
+      (sum, asset) => sum + Number(asset.price) * asset.quantity,
+      0
+    );
+  
+    // Create the order and connect/create AssetWallets
     const order = await this.prisma.order.create({
       data: {
         status: 'CONFIRMED',
-        price: assets.reduce((sum, asset) => sum + Number(asset.price),0),  // You can update with the correct price if needed
-        quantity: createOrderDto.assets.reduce((sum, asset) => sum + asset.quantity, 0),  // Example, adjust logic as needed
+        price: totalPrice,
+        quantity: createOrderDto.assets.reduce((sum, asset) => sum + asset.quantity, 0),
         assetWallet: {
           connectOrCreate: assetWalletDTO.map((assetWallet) => ({
             where: {
-              ticker: assetWallet.ticker
+              walletId_ticker: {
+                walletId: assetWallet.walletId,  // Composite unique key
+                ticker: assetWallet.ticker
+              }
             },
             create: {
               walletId: assetWallet.walletId,
@@ -54,6 +85,16 @@ export class OrderService {
             }
           }))
         }
+      }
+    });
+  
+    // Update the wallet with the new total invested amount
+    await this.prisma.wallet.update({
+      where: {
+        id: createOrderDto.walletId
+      },
+      data: {
+        totalInvested: Number(wallet.totalInvested) + totalPrice
       }
     });
   }

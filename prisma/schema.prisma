@@ -67,7 +67,7 @@ model Order {
 
 model Asset {
   id             Int      @id @default(autoincrement())
-  ticker         String   @unique
+  ticker         String   
   volume         Int
   dailyVariation Decimal
   bbi            Decimal
