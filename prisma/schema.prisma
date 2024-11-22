@@ -41,7 +41,7 @@ model TransactionRecord {
 
 model AssetWallet {
   id       Int       @id @default(autoincrement())
-  ticker   Int
+  ticker   String
   walletId Int
   boughtAt DateTime
   soldAt   DateTime?
