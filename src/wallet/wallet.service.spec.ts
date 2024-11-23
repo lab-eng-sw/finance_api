@@ -18,6 +18,13 @@ describe('WalletService', () => {
       update: jest.fn(),
       delete: jest.fn(),
     },
+    asset: {
+      findFirst: jest.fn(),
+    },
+    assetWallet: {
+      upsert: jest.fn(),
+    },
+    $transaction: jest.fn(),
   };
 
   beforeEach(async () => {
@@ -129,22 +136,148 @@ describe('WalletService', () => {
   });
 
   describe('update', () => {
-    it('should return a string confirming the update', () => {
+    it('should update the wallet assets and return the updated wallet', async () => {
       const id = 1;
       const updateWalletDto: UpdateWalletDto = {
-        totalInvested:1500,
-        active: true,
+        assets: [
+          { ticker: 'AAPL', quantity: 10 },
+          { ticker: 'GOOGL', quantity: 5 },
+        ],
       };
-      const result = service.update(id, updateWalletDto);
-      expect(result).toBe(`This action updates a #${id} wallet`);
+
+      const assetAAPL = { id: 1, ticker: 'AAPL' };
+      const assetGOOGL = { id: 2, ticker: 'GOOGL' };
+
+   
+      mockPrismaService.asset.findFirst
+        .mockResolvedValueOnce(assetAAPL)
+        .mockResolvedValueOnce(assetGOOGL);
+
+  
+      mockPrismaService.assetWallet.upsert.mockResolvedValue(null);
+
+
+      const updatedWallet = {
+        id: id,
+        totalInvested: new Prisma.Decimal(1000),
+        active: true,
+        investorId: 1,
+        assets: [
+          {
+            quantity: 10,
+            asset: assetAAPL,
+          },
+          {
+            quantity: 5,
+            asset: assetGOOGL,
+          },
+        ],
+      };
+      mockPrismaService.wallet.findUnique.mockResolvedValue(updatedWallet);
+
+  
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return await callback(mockPrismaService);
+      });
+
+      const result = await service.update(id, updateWalletDto);
+
+      expect(result).toEqual(updatedWallet);
+
+
+      expect(mockPrismaService.asset.findFirst).toHaveBeenCalledTimes(2);
+      expect(mockPrismaService.asset.findFirst).toHaveBeenCalledWith({ where: { ticker: 'AAPL' } });
+      expect(mockPrismaService.asset.findFirst).toHaveBeenCalledWith({ where: { ticker: 'GOOGL' } });
+
+
+      expect(mockPrismaService.assetWallet.upsert).toHaveBeenCalledTimes(2);
+      expect(mockPrismaService.assetWallet.upsert).toHaveBeenCalledWith({
+        where: {
+          assetId_walletId: {
+            assetId: assetAAPL.id,
+            walletId: id,
+          },
+        },
+        update: {
+          quantity: 10,
+        },
+        create: {
+          assetId: assetAAPL.id,
+          walletId: id,
+          quantity: 10,
+          boughtAt: expect.any(Date),
+        },
+      });
+      expect(mockPrismaService.assetWallet.upsert).toHaveBeenCalledWith({
+        where: {
+          assetId_walletId: {
+            assetId: assetGOOGL.id,
+            walletId: id,
+          },
+        },
+        update: {
+          quantity: 5,
+        },
+        create: {
+          assetId: assetGOOGL.id,
+          walletId: id,
+          quantity: 5,
+          boughtAt: expect.any(Date),
+        },
+      });
+
+      // Asserting that wallet.findUnique was called correctly
+      expect(mockPrismaService.wallet.findUnique).toHaveBeenCalledWith({
+        where: { id },
+        include: {
+          assets: {
+            include: {
+              asset: true,
+            },
+          },
+        },
+      });
+    });
+
+    it('should throw an error if an asset is not found', async () => {
+      const id = 1;
+      const updateWalletDto: UpdateWalletDto = {
+        assets: [{ ticker: 'INVALID', quantity: 10 }],
+      };
+
+      mockPrismaService.asset.findFirst.mockResolvedValue(null);
+
+      mockPrismaService.$transaction.mockImplementation(async (callback) => {
+        return await callback(mockPrismaService);
+      });
+
+      await expect(service.update(id, updateWalletDto)).rejects.toThrowError(
+        `Asset with ticker INVALID not found`,
+      );
+
+      expect(mockPrismaService.asset.findFirst).toHaveBeenCalledWith({ where: { ticker: 'INVALID' } });
+      expect(mockPrismaService.assetWallet.upsert).not.toHaveBeenCalled();
+      expect(mockPrismaService.wallet.findUnique).not.toHaveBeenCalled();
     });
   });
 
   describe('remove', () => {
-    it('should return a string confirming the removal', () => {
+    it('should remove the wallet by ID', async () => {
       const id = 1;
-      const result = service.remove(id);
-      expect(result).toBe(`This action removes a #${id} wallet`);
+      const deletedWallet = {
+        id,
+        totalInvested: new Prisma.Decimal(1000),
+        active: false,
+        investorId: 1,
+      };
+      mockPrismaService.wallet.delete.mockResolvedValue(deletedWallet);
+
+      const result = await service.remove(id);
+
+      expect(result).toEqual(deletedWallet);
+      expect(mockPrismaService.wallet.delete).toHaveBeenCalledWith({ where: { id } });
     });
+
+   
   });
 });

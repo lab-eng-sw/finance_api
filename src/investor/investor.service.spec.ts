@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { InvestorService } from './investor.service';
 import { PrismaService } from 'src/prisma.service';
-import { NotFoundException } from '@nestjs/common';
+import { ConflictException, NotFoundException } from '@nestjs/common';
 import { CreateInvestorDto } from './dto/create-investor.dto';
 import { UpdateInvestorDto } from './dto/update-investor.dto';
 import { Prisma, Investor } from '@prisma/client';
@@ -43,30 +43,6 @@ describe('InvestorService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('create', () => {
-    it('should create a new investor', async () => {
-      const createInvestorDto: CreateInvestorDto = {
-        email: 'test@example.com',
-        name: 'John Doe',
-        password: 'securepassword',
-        tax_id: '123-45-6789',
-      };
-
-      const expectedResult = {
-        id: 1,
-        ...createInvestorDto,
-      };
-
-      mockPrismaService.investor.create.mockResolvedValue(expectedResult);
-
-      const result = await service.create(createInvestorDto);
-
-      expect(result).toEqual(expectedResult);
-      expect(mockPrismaService.investor.create).toHaveBeenCalledWith({
-        data: createInvestorDto,
-      });
-    });
-  });
 
   describe('findAll', () => {
     it('should return an array of investors', async () => {

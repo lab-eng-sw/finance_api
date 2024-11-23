@@ -2,17 +2,32 @@ import {
   Injectable,
   NotFoundException,
   InternalServerErrorException,
+  ConflictException,
 } from '@nestjs/common';
 import { CreateInvestorDto } from './dto/create-investor.dto';
 import { UpdateInvestorDto } from './dto/update-investor.dto';
 import { PrismaService } from 'src/prisma.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class InvestorService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createInvestorDto: CreateInvestorDto) {
-    return 'This action adds a new investor';
+    try {
+      const investor = await this.prisma.investor.create({
+        data: createInvestorDto,
+      });
+      return investor;
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new ConflictException('Email or Tax ID already exists');
+      }
+      throw error;
+    }
   }
 
   async findAll() {

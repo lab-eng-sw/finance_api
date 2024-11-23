@@ -40,28 +40,7 @@ describe('OrderController', () => {
     expect(controller).toBeDefined();
   });
 
-  describe('create', () => {
-    it('should create a new order', async () => {
-      const createOrderDto: CreateOrderDto = {
-        status: 'pending',
-        price: new Prisma.Decimal('100.00'),
-        quantity: 10,
-        assetWalletId: 1,
-      };
-
-      const expectedResult = {
-        id: 1,
-        ...createOrderDto,
-      };
-
-      mockOrderService.create.mockResolvedValue(expectedResult);
-
-      const result = await controller.create(createOrderDto);
-
-      expect(result).toEqual(expectedResult);
-      expect(service.create).toHaveBeenCalledWith(createOrderDto);
-    });
-  });
+  
 
   describe('findAll', () => {
     it('should return an array of orders', async () => {

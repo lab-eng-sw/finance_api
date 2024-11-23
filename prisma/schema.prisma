@@ -1,5 +1,4 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
+// schema.prisma
 
 generator client {
   provider = "prisma-client-js"
@@ -21,53 +20,55 @@ model Investor {
 
 model Wallet {
   id            Int                 @id @default(autoincrement())
-  totalInvested Decimal
+  totalInvested Decimal             @default(0.0)
   active        Boolean             @default(false)
   investor      Investor            @relation(fields: [investorId], references: [id])
   investorId    Int                 @unique
   transactions  TransactionRecord[]
   assets        AssetWallet[]
+  orders        Order[]
 }
 
 model TransactionRecord {
-  id       Int      @id @default(autoincrement())
-  date     DateTime
-  value    Decimal
-  wallet   Wallet   @relation(fields: [walletId], references: [id])
-  walletId Int
-  createdAt    DateTime @default(now()) @db.Timestamptz(6)
-  updatedAt    DateTime @updatedAt @db.Timestamptz(6)
+  id        Int      @id @default(autoincrement())
+  date      DateTime
+  value     Decimal
+  wallet    Wallet   @relation(fields: [walletId], references: [id])
+  walletId  Int
+  createdAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @db.Timestamptz(6)
 }
 
 model AssetWallet {
-  id       Int       @id @default(autoincrement())
-  ticker   String
-  walletId Int
-  boughtAt DateTime
-  soldAt   DateTime?
-  profit   Decimal?
-  quantity Int
+  id        Int      @id @default(autoincrement())
+  assetId   Int
+  walletId  Int
+  boughtAt  DateTime
+  soldAt    DateTime?
+  profit    Decimal?
+  quantity  Int
 
-  asset  Asset  @relation(fields: [ticker], references: [id])
-  wallet Wallet @relation(fields: [walletId], references: [id])
+  asset   Asset   @relation(fields: [assetId], references: [id])
+  wallet  Wallet  @relation(fields: [walletId], references: [id])
 
-  orders Order[]
-
-  @@unique([ticker, walletId])
+  @@unique([assetId, walletId])
 }
 
 model Order {
-  id            Int         @id @default(autoincrement())
-  status        String
-  price         Decimal
-  quantity      Int
-  assetWallet   AssetWallet @relation(fields: [assetWalletId], references: [id])
-  assetWalletId Int
+  id         Int          @id @default(autoincrement())
+  status     String
+  price      Decimal
+  quantity   Int
+  wallet     Wallet       @relation(fields: [walletId], references: [id])
+  walletId   Int
+  assets     OrderAsset[] // An order has many assets through OrderAsset
 }
 
 model Asset {
-  id             Int      @id @default(autoincrement())
-  ticker         String   
+  id             Int            @id @default(autoincrement())
+  ticker         String
+  date           DateTime
+  price          Decimal
   volume         Int
   dailyVariation Decimal
   bbi            Decimal
@@ -77,8 +78,6 @@ model Asset {
   assetName      String
   type           String
   benchmark      String
-  date           DateTime
-  price          Decimal
   pl             Decimal
   macdim         Decimal
   macdis         Decimal
@@ -89,5 +88,18 @@ model Asset {
   rsicom         Decimal
   rsivem         Decimal
 
-  assetWallets AssetWallet[]
+  assetWallets   AssetWallet[]
+  orders         OrderAsset[]
+}
+
+model OrderAsset {
+  id          Int     @id @default(autoincrement())
+  order       Order   @relation(fields: [orderId], references: [id])
+  orderId     Int
+  asset       Asset   @relation(fields: [assetId], references: [id])
+  assetId     Int
+  quantity    Int
+  price       Decimal
+
+  @@unique([orderId, assetId])
 }

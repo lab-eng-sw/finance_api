@@ -1,7 +1,7 @@
 import { Prisma } from '@prisma/client';
 
 export class CreateWalletDto {
-  totalInvested: number;
+  totalInvested: any;
   investorId: number;
   active?: boolean;
 }

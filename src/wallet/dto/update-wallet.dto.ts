@@ -1,4 +1,18 @@
-import { PartialType } from '@nestjs/mapped-types';
-import { CreateWalletDto } from './create-wallet.dto';
+// update-wallet.dto.ts
+import { IsArray, ValidateNested, IsString, IsInt } from 'class-validator';
+import { Type } from 'class-transformer';
 
-export class UpdateWalletDto extends PartialType(CreateWalletDto) {}
+class UpdateAssetDto {
+  @IsString()
+  ticker: string;
+
+  @IsInt()
+  quantity: number;
+}
+
+export class UpdateWalletDto {
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => UpdateAssetDto)
+  assets: UpdateAssetDto[];
+}

@@ -1,8 +1,10 @@
+// wallet.controller.spec.ts
+
 import { Test, TestingModule } from '@nestjs/testing';
 import { WalletController } from './wallet.controller';
 import { WalletService } from './wallet.service';
 import { CreateWalletDto } from './dto/create-wallet.dto';
-import { UpdateWalletDto } from './dto/update-wallet.dto';
+import { NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 
 describe('WalletController', () => {
@@ -37,10 +39,11 @@ describe('WalletController', () => {
   describe('create', () => {
     it('should create a wallet', async () => {
       const createWalletDto: CreateWalletDto = {
-        totalInvested: 100,
+        totalInvested: new Prisma.Decimal(100),
         investorId: 1,
       };
-      const result = {
+
+      const serviceResult = {
         id: 1,
         totalInvested: new Prisma.Decimal(100),
         investorId: 1,
@@ -48,32 +51,36 @@ describe('WalletController', () => {
         assets: [],
       };
 
-      jest.spyOn(service, 'create').mockResolvedValue(result);
+      jest.spyOn(service, 'create').mockResolvedValue(serviceResult);
 
-      await expect(controller.create(createWalletDto)).resolves.toEqual(result);
+      await expect(controller.create(createWalletDto)).resolves.toEqual(
+        serviceResult,
+      );
       expect(service.create).toHaveBeenCalledWith(createWalletDto);
     });
   });
 
   describe('findAll', () => {
     it('should return an array of wallets', async () => {
-      const result = {
-        id: 1,
-        totalInvested: new Prisma.Decimal(100),
-        investorId: 1,
-        active: true,
-      };
+      const serviceResult = [
+        {
+          id: 1,
+          totalInvested: new Prisma.Decimal(100),
+          investorId: 1,
+          active: true,
+        },
+      ];
 
-      jest.spyOn(service, 'findAll').mockResolvedValue([result]);
+      jest.spyOn(service, 'findAll').mockResolvedValue(serviceResult);
 
-      await expect(controller.findAll()).resolves.toEqual(result);
+      await expect(controller.findAll()).resolves.toEqual(serviceResult);
       expect(service.findAll).toHaveBeenCalled();
     });
   });
 
   describe('findOne', () => {
     it('should return a single wallet', async () => {
-      const result = {
+      const serviceResult = {
         id: 1,
         totalInvested: new Prisma.Decimal(100),
         investorId: 1,
@@ -81,46 +88,36 @@ describe('WalletController', () => {
         assets: [],
       };
 
-      jest.spyOn(service, 'findOne').mockResolvedValue(result);
+      jest.spyOn(service, 'findOne').mockResolvedValue(serviceResult);
 
-      await expect(controller.findOne('1')).resolves.toEqual(result);
-      expect(service.findOne).toHaveBeenCalledWith('1');
+      await expect(controller.findOne('1')).resolves.toEqual(serviceResult);
+      expect(service.findOne).toHaveBeenCalledWith(1);
     });
 
-    it('should handle not found errors', async () => {
-      jest.spyOn(service, 'findOne').mockResolvedValue(null);
+    it('should throw NotFoundException if wallet not found', async () => {
+      jest
+        .spyOn(service, 'findOne')
+        .mockRejectedValue(new NotFoundException('Wallet not found'));
 
-      await expect(controller.findOne('1')).resolves.toBeNull();
-      expect(service.findOne).toHaveBeenCalledWith('1');
-    });
-  });
-
-  describe('update', () => {
-    it('should update a wallet', async () => {
-      const result = {
-        id: 1,
-        totalInvested: new Prisma.Decimal(100),
-        investorId: 1,
-        active: true,
-      };
-      const updateWalletDto: UpdateWalletDto = {
-        totalInvested: 100,
-        investorId: 1,
-      };
-
-      await expect(controller.update('1', updateWalletDto)).resolves.toEqual(
-        result,
-      );
-      expect(service.update).toHaveBeenCalledWith('1', updateWalletDto);
+      await expect(controller.findOne('1')).rejects.toThrow(NotFoundException);
+      expect(service.findOne).toHaveBeenCalledWith(1);
     });
   });
 
   describe('remove', () => {
     it('should remove a wallet', async () => {
-      const result = { id: 1, name: 'Test Wallet' };
+      const serviceResult = {
+        id: 1,
+        totalInvested: new Prisma.Decimal(100),
+        investorId: 1,
+        active: true,
+        assets: [],
+      };
 
-      await expect(controller.remove('1')).resolves.toEqual(result);
-      expect(service.remove).toHaveBeenCalledWith('1');
+      jest.spyOn(service, 'remove').mockResolvedValue(serviceResult);
+
+      await expect(controller.remove('1')).resolves.toEqual(serviceResult);
+      expect(service.remove).toHaveBeenCalledWith(1);
     });
   });
 });

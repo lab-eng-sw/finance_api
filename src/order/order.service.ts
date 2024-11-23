@@ -13,85 +13,73 @@ export class OrderService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createOrderDto: CreateOrderDto) {
-    const wallet = await this.prisma.wallet.findUnique({
-      where: { id: createOrderDto.walletId }
-    });
-  
-    if (!wallet) {
-      throw new NotFoundException('No wallet found');
-    }
-  
-    // Fetch assets based on tickers provided in the order
-    const assets = await Promise.all(
-      createOrderDto.assets.map(async ({ ticker }) =>
-        await this.prisma.asset.findFirst({
-          where: {
-            ticker
-          }
-        })
-      )
-    );
-  
-    // Create AssetWalletDTO that contains the asset wallet details
-    const assetWalletDTO = assets.map((asset) => {
-      const { quantity, ticker } = createOrderDto.assets.find(
-        (assetInput) => assetInput.ticker === asset.ticker
-      );
-      return {
-        ticker,  // Here we use asset.id, assuming it's an integer
-        boughtAt: new Date(),
-        quantity,
-        walletId: createOrderDto.walletId
-      };
-    });
-  
-    // Map to prepare the asset details for the order creation
-    const assetMapper = assets.map((asset) => {
-      const { quantity, ticker } = createOrderDto.assets.find(
-        (assetInput) => assetInput.ticker === asset.ticker
-      );
-      return {
-        ticker,
-        price: asset.price,
-        quantity,
-        walletId: createOrderDto.walletId
-      };
-    });
-  
-    // Calculate the total price of the order
-    const totalPrice = assetMapper.reduce(
-      (sum, asset) => sum + Number(asset.price) * asset.quantity,
-      0
-    );
-  
-    // Create the order and connect/create AssetWallets
-    const order = await this.prisma.order.create({
-      data: {
-        status: 'CONFIRMED',
-        price: totalPrice,
-        quantity: createOrderDto.assets.reduce(
-          (sum, asset) => sum + asset.quantity,
-          0,
-        ),
-        assetWallet: {
-          create: assetWalletDTO.map((assetWallet) => ({
-            walletId: assetWallet.walletId,
-            ticker: assetWallet.ticker,
-            boughtAt: assetWallet.boughtAt,
-            quantity: assetWallet.quantity,
-          })) as unknown as Prisma.AssetWalletCreateWithoutOrdersInput,
-        },
-      },
-    });
-  
-    // Update the wallet with the new total invested amount
-    await this.prisma.wallet.update({
-      where: {
-        id: createOrderDto.walletId
-      },
-      data: {
-        totalInvested: Number(wallet.totalInvested) + totalPrice
+    const { walletId, assets } = createOrderDto;
+
+    return await this.prisma.$transaction(async (prisma) => {
+      const wallet = await prisma.wallet.findUnique({
+        where: { id: walletId },
+      });
+
+      if (!wallet) {
+        throw new NotFoundException('Wallet not found');
       }
+
+      const orderAssetsData = [];
+      let totalOrderPrice = new Prisma.Decimal(0);
+      let totalQuantity = 0;
+
+      for (const assetInput of assets) {
+
+        const asset = await prisma.asset.findFirst({
+          where: { ticker: assetInput.ticker },
+          orderBy: { date: 'desc' },
+        });
+
+        if (!asset) {
+          throw new NotFoundException(
+            `Asset with ticker ${assetInput.ticker} not found`,
+          );
+        }
+
+        const assetPrice = asset.price;
+        const totalAssetPrice = assetPrice.times(assetInput.quantity);
+
+        totalOrderPrice = totalOrderPrice.plus(totalAssetPrice);
+        totalQuantity += assetInput.quantity;
+
+        orderAssetsData.push({
+          assetId: asset.id,
+          quantity: assetInput.quantity,
+          price: assetPrice,
+        });
+      }
+
+      const order = await prisma.order.create({
+        data: {
+          status: 'CONFIRMED',
+          price: totalOrderPrice,
+          quantity: totalQuantity,
+          walletId: walletId,
+          assets: {
+            create: orderAssetsData,
+          },
+        },
+        include: {
+          assets: {
+            include: {
+              asset: true,
+            },
+          },
+        },
+      });
+      await prisma.wallet.update({
+        where: { id: walletId },
+        data: {
+          totalInvested: wallet.totalInvested.plus(totalOrderPrice),
+        },
+      });
+
+      return order;
     });
   }
 
@@ -115,15 +103,93 @@ export class OrderService {
 
   async update(id: number, updateOrderDto: UpdateOrderDto) {
     try {
-      const updatedOrder = await this.prisma.order.update({
-        where: { id },
-        data: updateOrderDto,
+      const { assets, status } = updateOrderDto;
+
+      return await this.prisma.$transaction(async (prisma) => {
+        const existingOrder = await prisma.order.findUnique({
+          where: { id },
+          include: {
+            assets: true,
+          },
+        });
+
+        if (!existingOrder) {
+          throw new NotFoundException(`Order with ID ${id} not found`);
+        }
+
+        let totalOrderPrice = existingOrder.price;
+        let totalQuantity = existingOrder.quantity;
+
+        let assetsData = undefined;
+        if (assets) {
+
+          totalOrderPrice = new Prisma.Decimal(0);
+          totalQuantity = 0;
+
+          await prisma.orderAsset.deleteMany({
+            where: { orderId: id },
+          });
+
+
+          const orderAssetsData = [];
+
+          for (const assetInput of assets) {
+            const asset = await prisma.asset.findFirst({
+              where: { ticker: assetInput.ticker },
+              orderBy: { date: 'desc' },
+            });
+
+            if (!asset) {
+              throw new NotFoundException(
+                `Asset with ticker ${assetInput.ticker} not found`,
+              );
+            }
+
+            const assetPrice = asset.price;
+            const totalAssetPrice = assetPrice.times(assetInput.quantity);
+
+            totalOrderPrice = totalOrderPrice.plus(totalAssetPrice);
+            totalQuantity += assetInput.quantity;
+
+            orderAssetsData.push({
+              assetId: asset.id,
+              quantity: assetInput.quantity,
+              price: assetPrice,
+            });
+          }
+
+          assetsData = {
+            create: orderAssetsData,
+          };
+        }
+
+        const updatedOrder = await prisma.order.update({
+          where: { id },
+          data: {
+            status,
+            price: totalOrderPrice,
+            quantity: totalQuantity,
+            assets: assetsData,
+          },
+          include: {
+            assets: {
+              include: {
+                asset: true,
+              },
+            },
+          },
+        });
+
+        return updatedOrder;
       });
-      return updatedOrder;
     } catch (error) {
-      if (error.code === 'P2025') {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2025'
+      ) {
         throw new NotFoundException(`Order with ID ${id} not found`);
       }
+      throw error;
     }
   }
 
