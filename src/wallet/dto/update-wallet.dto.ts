@@ -14,5 +14,8 @@ export class UpdateWalletDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => UpdateAssetDto)
-  assets: UpdateAssetDto[];
+  assets?: UpdateAssetDto[];
+
+  @IsString()
+  active?: boolean;
 }

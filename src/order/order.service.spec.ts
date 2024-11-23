@@ -1,287 +1,396 @@
+// order.service.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
-
+import { OrderService } from './order.service';
 import { PrismaService } from 'src/prisma.service';
 import { NotFoundException } from '@nestjs/common';
-
 import { Prisma } from '@prisma/client';
-import { CreateWalletDto } from 'src/wallet/dto/create-wallet.dto';
-import { UpdateWalletDto } from 'src/wallet/dto/update-wallet.dto';
-import { WalletService } from 'src/wallet/wallet.service';
+import { CreateOrderDto } from './dto/create-order.dto';
+import { UpdateOrderDto } from './dto/update-order.dto';
 
-describe('WalletService', () => {
-  let service: WalletService;
-  let prisma: PrismaService;
-
-  const mockPrismaService = {
+describe('OrderService', () => {
+  let service: OrderService;
+  let prisma: PrismaService & {
+    order: {
+      create: jest.Mock;
+      findMany: jest.Mock;
+      findUnique: jest.Mock;
+      update: jest.Mock;
+      delete: jest.Mock;
+    };
     wallet: {
-      create: jest.fn(),
-      findMany: jest.fn(),
-      findUnique: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    },
+      findUnique: jest.Mock;
+      update: jest.Mock;
+    };
     asset: {
-      findFirst: jest.fn(),
-    },
-    assetWallet: {
-      upsert: jest.fn(),
-    },
-    $transaction: jest.fn(),
+      findFirst: jest.Mock;
+    };
+    orderAsset: {
+      deleteMany: jest.Mock;
+    };
+    $transaction: jest.Mock;
   };
 
   beforeEach(async () => {
+    const prismaServiceMock = {
+      order: {
+        create: jest.fn(),
+        findMany: jest.fn(),
+        findUnique: jest.fn(),
+        update: jest.fn(),
+        delete: jest.fn(),
+      },
+      wallet: {
+        findUnique: jest.fn(),
+        update: jest.fn(),
+      },
+      asset: {
+        findFirst: jest.fn(),
+      },
+      orderAsset: {
+        deleteMany: jest.fn(),
+      },
+      $transaction: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
-        WalletService,
+        OrderService,
         {
           provide: PrismaService,
-          useValue: mockPrismaService,
+          useValue: prismaServiceMock,
         },
       ],
     }).compile();
 
-    service = module.get<WalletService>(WalletService);
-    prisma = module.get<PrismaService>(PrismaService);
+    service = module.get<OrderService>(OrderService);
+    prisma = module.get<PrismaService>(PrismaService) as typeof prisma & {
+      order: typeof prisma;
+    };;
   });
 
-  beforeEach(() => {
+  afterEach(() => {
     jest.clearAllMocks();
   });
 
-  it('should be defined', () => {
-    expect(service).toBeDefined();
-  });
-
   describe('create', () => {
-    it('should create a new wallet', async () => {
-      const createWalletDto: CreateWalletDto = {
-        totalInvested: 1000,
-        active: false,
-        investorId: 1,
+    it('should create an order successfully', async () => {
+      const createOrderDto: CreateOrderDto = {
+        walletId: 1,
+        assets: [
+          { ticker: 'AAPL', quantity: 10 },
+          { ticker: 'GOOG', quantity: 5 },
+        ],
       };
-      const expectedResult = {
+
+      const wallet = {
         id: 1,
-        ...createWalletDto,
+        totalInvested: new Prisma.Decimal(1000),
       };
-      mockPrismaService.wallet.create.mockResolvedValue(expectedResult);
 
-      const result = await service.create(createWalletDto);
+      const assets = [
+        {
+          id: 1,
+          ticker: 'AAPL',
+          price: new Prisma.Decimal(150),
+        },
+        {
+          id: 2,
+          ticker: 'GOOG',
+          price: new Prisma.Decimal(2000),
+        },
+      ];
 
-      expect(result).toEqual(expectedResult);
-      expect(mockPrismaService.wallet.create).toHaveBeenCalledWith({
-        data: createWalletDto,
+      const createdOrder = {
+        id: 1,
+        status: 'CONFIRMED',
+        price: new Prisma.Decimal(11500), // 10 * 150 + 5 * 2000
+        quantity: 15,
+        walletId: 1,
+        assets: [
+          {
+            assetId: 1,
+            quantity: 10,
+            price: new Prisma.Decimal(150),
+            asset: assets[0],
+          },
+          {
+            assetId: 2,
+            quantity: 5,
+            price: new Prisma.Decimal(2000),
+            asset: assets[1],
+          },
+        ],
+      };
+
+      prisma.$transaction.mockImplementation(async (callback) => {
+        return await callback(prisma);
+      });
+
+      prisma.wallet.findUnique.mockResolvedValue(wallet);
+      prisma.asset.findFirst
+        .mockResolvedValueOnce(assets[0])
+        .mockResolvedValueOnce(assets[1]);
+      prisma.order.create.mockResolvedValue(createdOrder);
+      prisma.wallet.update.mockResolvedValue({
+        ...wallet,
+        totalInvested: wallet.totalInvested.plus(new Prisma.Decimal(11500)),
+      });
+
+      const result = await service.create(createOrderDto);
+
+      expect(result).toEqual(createdOrder);
+      expect(prisma.wallet.findUnique).toHaveBeenCalledWith({
+        where: { id: createOrderDto.walletId },
+      });
+      expect(prisma.asset.findFirst).toHaveBeenCalledTimes(2);
+      expect(prisma.order.create).toHaveBeenCalled();
+      expect(prisma.wallet.update).toHaveBeenCalledWith({
+        where: { id: createOrderDto.walletId },
+        data: {
+          totalInvested: wallet.totalInvested.plus(new Prisma.Decimal(11500)),
+        },
+      });
+    });
+
+    it('should throw NotFoundException if wallet not found', async () => {
+      const createOrderDto: CreateOrderDto = {
+        walletId: 1,
+        assets: [{ ticker: 'AAPL', quantity: 10 }],
+      };
+
+      prisma.$transaction.mockImplementation(async (callback) => {
+        return await callback(prisma);
+      });
+
+      prisma.wallet.findUnique.mockResolvedValue(null);
+
+      await expect(service.create(createOrderDto)).rejects.toThrow(
+        NotFoundException,
+      );
+
+      expect(prisma.wallet.findUnique).toHaveBeenCalledWith({
+        where: { id: createOrderDto.walletId },
+      });
+    });
+
+    it('should throw NotFoundException if asset not found', async () => {
+      const createOrderDto: CreateOrderDto = {
+        walletId: 1,
+        assets: [{ ticker: 'AAPL', quantity: 10 }],
+      };
+
+      const wallet = {
+        id: 1,
+        totalInvested: new Prisma.Decimal(1000),
+      };
+
+      prisma.$transaction.mockImplementation(async (callback) => {
+        return await callback(prisma);
+      });
+
+      prisma.wallet.findUnique.mockResolvedValue(wallet);
+      prisma.asset.findFirst.mockResolvedValue(null);
+
+      await expect(service.create(createOrderDto)).rejects.toThrow(
+        NotFoundException,
+      );
+
+      expect(prisma.asset.findFirst).toHaveBeenCalledWith({
+        where: { ticker: 'AAPL' },
+        orderBy: { date: 'desc' },
       });
     });
   });
 
   describe('findAll', () => {
-    it('should return an array of wallets', async () => {
-      const wallets = [
-        {
-          id: 1,
-          totalInvested: new Prisma.Decimal(1000),
-          active: false,
-          investorId: 1,
-        },
-        {
-          id: 2,
-          totalInvested: new Prisma.Decimal(2000),
-          active: true,
-          investorId: 2,
-        },
+    it('should return an array of orders', async () => {
+      const orders = [
+        { id: 1, status: 'CONFIRMED', price: new Prisma.Decimal(1000) },
+        { id: 2, status: 'PENDING', price: new Prisma.Decimal(500) },
       ];
-      mockPrismaService.wallet.findMany.mockResolvedValue(wallets);
+
+      prisma.order.findMany.mockResolvedValue(orders);
 
       const result = await service.findAll();
 
-      expect(result).toEqual(wallets);
-      expect(mockPrismaService.wallet.findMany).toHaveBeenCalled();
+      expect(result).toEqual(orders);
+      expect(prisma.order.findMany).toHaveBeenCalled();
     });
 
-    it('should throw NotFoundException if no wallets are found', async () => {
-      mockPrismaService.wallet.findMany.mockResolvedValue([]);
+    it('should throw NotFoundException if no orders found', async () => {
+      prisma.order.findMany.mockResolvedValue([]);
 
       await expect(service.findAll()).rejects.toThrow(NotFoundException);
-      expect(mockPrismaService.wallet.findMany).toHaveBeenCalled();
+
+      expect(prisma.order.findMany).toHaveBeenCalled();
     });
   });
 
   describe('findOne', () => {
-    it('should return a wallet by ID', async () => {
-      const wallet = {
+    it('should return the order if found', async () => {
+      const order = {
         id: 1,
-        totalInvested: new Prisma.Decimal(1000),
-        active: false,
-        investorId: 1,
-        assets: [],
+        status: 'CONFIRMED',
+        price: new Prisma.Decimal(1000),
       };
-      mockPrismaService.wallet.findUnique.mockResolvedValue(wallet);
+
+      prisma.order.findUnique.mockResolvedValue(order);
 
       const result = await service.findOne(1);
 
-      expect(result).toEqual(wallet);
-      expect(mockPrismaService.wallet.findUnique).toHaveBeenCalledWith({
+      expect(result).toEqual(order);
+      expect(prisma.order.findUnique).toHaveBeenCalledWith({
         where: { id: 1 },
-        include: { assets: true },
       });
     });
 
-    it('should throw NotFoundException if wallet not found', async () => {
-      mockPrismaService.wallet.findUnique.mockResolvedValue(null);
+    it('should throw NotFoundException if order not found', async () => {
+      prisma.order.findUnique.mockResolvedValue(null);
 
       await expect(service.findOne(1)).rejects.toThrow(NotFoundException);
-      expect(mockPrismaService.wallet.findUnique).toHaveBeenCalledWith({
+
+      expect(prisma.order.findUnique).toHaveBeenCalledWith({
         where: { id: 1 },
-        include: { assets: true },
       });
     });
   });
 
   describe('update', () => {
-    it('should update the wallet assets and return the updated wallet', async () => {
-      const id = 1;
-      const updateWalletDto: UpdateWalletDto = {
-        assets: [
-          { ticker: 'AAPL', quantity: 10 },
-          { ticker: 'GOOGL', quantity: 5 },
-        ],
+    it('should update an order successfully', async () => {
+      const updateOrderDto: UpdateOrderDto = {
+        status: 'COMPLETED',
+        assets: [{ ticker: 'AAPL', quantity: 5 }],
       };
 
-      const assetAAPL = { id: 1, ticker: 'AAPL' };
-      const assetGOOGL = { id: 2, ticker: 'GOOGL' };
+      const existingOrder = {
+        id: 1,
+        status: 'CONFIRMED',
+        price: new Prisma.Decimal(1000),
+        quantity: 10,
+        assets: [],
+      };
 
-      mockPrismaService.asset.findFirst
-        .mockResolvedValueOnce(assetAAPL)
-        .mockResolvedValueOnce(assetGOOGL);
+      const asset = {
+        id: 1,
+        ticker: 'AAPL',
+        price: new Prisma.Decimal(150),
+      };
 
-
-      mockPrismaService.assetWallet.upsert.mockResolvedValue(null);
-
-      const updatedWallet = {
-        id: id,
-        totalInvested: new Prisma.Decimal(1000),
-        active: true,
-        investorId: 1,
+      const updatedOrder = {
+        id: 1,
+        status: 'COMPLETED',
+        price: new Prisma.Decimal(750),
+        quantity: 5,
         assets: [
           {
-            quantity: 10,
-            asset: assetAAPL,
-          },
-          {
+            assetId: 1,
             quantity: 5,
-            asset: assetGOOGL,
+            price: new Prisma.Decimal(150),
+            asset: asset,
           },
         ],
       };
-      mockPrismaService.wallet.findUnique.mockResolvedValue(updatedWallet);
 
-      mockPrismaService.$transaction.mockImplementation(async (callback) => {
-        return await callback(mockPrismaService);
+      prisma.$transaction.mockImplementation(async (callback) => {
+        return await callback(prisma);
       });
 
-      const result = await service.update(id, updateWalletDto);
+      prisma.order.findUnique.mockResolvedValue(existingOrder);
+      prisma.orderAsset.deleteMany.mockResolvedValue({ count: 0 });
+      prisma.asset.findFirst.mockResolvedValue(asset);
+      prisma.order.update.mockResolvedValue(updatedOrder);
 
-      expect(result).toEqual(updatedWallet);
+      const result = await service.update(1, updateOrderDto);
 
-      expect(mockPrismaService.asset.findFirst).toHaveBeenCalledTimes(2);
-      expect(mockPrismaService.asset.findFirst).toHaveBeenCalledWith({
+      expect(result).toEqual(updatedOrder);
+      expect(prisma.order.findUnique).toHaveBeenCalledWith({
+        where: { id: 1 },
+        include: { assets: true },
+      });
+      expect(prisma.orderAsset.deleteMany).toHaveBeenCalledWith({
+        where: { orderId: 1 },
+      });
+      expect(prisma.asset.findFirst).toHaveBeenCalledWith({
         where: { ticker: 'AAPL' },
+        orderBy: { date: 'desc' },
       });
-      expect(mockPrismaService.asset.findFirst).toHaveBeenCalledWith({
-        where: { ticker: 'GOOGL' },
+      expect(prisma.order.update).toHaveBeenCalled();
+    });
+
+    it('should throw NotFoundException if order not found', async () => {
+      prisma.$transaction.mockImplementation(async (callback) => {
+        return await callback(prisma);
       });
 
-      expect(mockPrismaService.assetWallet.upsert).toHaveBeenCalledTimes(2);
-      expect(mockPrismaService.assetWallet.upsert).toHaveBeenCalledWith({
-        where: {
-          assetId_walletId: {
-            assetId: assetAAPL.id,
-            walletId: id,
-          },
-        },
-        update: {
-          quantity: 10,
-        },
-        create: {
-          assetId: assetAAPL.id,
-          walletId: id,
-          quantity: 10,
-          boughtAt: expect.any(Date),
-        },
-      });
-      expect(mockPrismaService.assetWallet.upsert).toHaveBeenCalledWith({
-        where: {
-          assetId_walletId: {
-            assetId: assetGOOGL.id,
-            walletId: id,
-          },
-        },
-        update: {
-          quantity: 5,
-        },
-        create: {
-          assetId: assetGOOGL.id,
-          walletId: id,
-          quantity: 5,
-          boughtAt: expect.any(Date),
-        },
-      });
+      prisma.order.findUnique.mockResolvedValue(null);
 
-      expect(mockPrismaService.wallet.findUnique).toHaveBeenCalledWith({
-        where: { id },
-        include: {
-          assets: {
-            include: {
-              asset: true,
-            },
-          },
-        },
+      await expect(service.update(1, {})).rejects.toThrow(NotFoundException);
+
+      expect(prisma.order.findUnique).toHaveBeenCalledWith({
+        where: { id: 1 },
+        include: { assets: true },
       });
     });
 
-    it('should throw an error if an asset is not found', async () => {
-      const id = 1;
-      const updateWalletDto: UpdateWalletDto = {
-        assets: [{ ticker: 'INVALID', quantity: 10 }],
+    it('should throw NotFoundException if asset not found during update', async () => {
+      const updateOrderDto: UpdateOrderDto = {
+        assets: [{ ticker: 'AAPL', quantity: 5 }],
       };
 
-      mockPrismaService.asset.findFirst.mockResolvedValue(null);
+      const existingOrder = {
+        id: 1,
+        status: 'CONFIRMED',
+        price: new Prisma.Decimal(1000),
+        quantity: 10,
+        assets: [],
+      };
 
-      mockPrismaService.$transaction.mockImplementation(async (callback) => {
-        return await callback(mockPrismaService);
+      prisma.$transaction.mockImplementation(async (callback) => {
+        return await callback(prisma);
       });
 
-      await expect(service.update(id, updateWalletDto)).rejects.toThrowError(
-        `Asset with ticker INVALID not found`,
+      prisma.order.findUnique.mockResolvedValue(existingOrder);
+      prisma.orderAsset.deleteMany.mockResolvedValue({ count: 0 });
+      prisma.asset.findFirst.mockResolvedValue(null);
+
+      await expect(service.update(1, updateOrderDto)).rejects.toThrow(
+        NotFoundException,
       );
 
-      expect(mockPrismaService.asset.findFirst).toHaveBeenCalledWith({
-        where: { ticker: 'INVALID' },
+      expect(prisma.asset.findFirst).toHaveBeenCalledWith({
+        where: { ticker: 'AAPL' },
+        orderBy: { date: 'desc' },
       });
-      expect(mockPrismaService.assetWallet.upsert).not.toHaveBeenCalled();
-      expect(mockPrismaService.wallet.findUnique).not.toHaveBeenCalled();
     });
   });
 
   describe('remove', () => {
-    it('should remove the wallet by ID', async () => {
-      const id = 1;
-      const deletedWallet = {
-        id,
-        totalInvested: new Prisma.Decimal(1000),
-        active: false,
-        investorId: 1,
+    it('should remove an order successfully', async () => {
+      const deletedOrder = {
+        id: 1,
+        status: 'CONFIRMED',
+        price: new Prisma.Decimal(1000),
       };
-      mockPrismaService.wallet.delete.mockResolvedValue(deletedWallet);
 
-      const result = await service.remove(id);
+      prisma.order.delete.mockResolvedValue(deletedOrder);
 
-      expect(result).toEqual(deletedWallet);
-      expect(mockPrismaService.wallet.delete).toHaveBeenCalledWith({
-        where: { id },
-      });
+      const result = await service.remove(1);
+
+      expect(result).toEqual(deletedOrder);
+      expect(prisma.order.delete).toHaveBeenCalledWith({ where: { id: 1 } });
     });
 
-   
+    it('should throw NotFoundException if order not found during deletion', async () => {
+      const prismaError = {
+        code: 'P2025',
+        message: 'Record not found',
+      };
+
+      prisma.order.delete.mockRejectedValue(prismaError);
+
+      await expect(service.remove(1)).rejects.toThrow(NotFoundException);
+
+      expect(prisma.order.delete).toHaveBeenCalledWith({ where: { id: 1 } });
+    });
   });
 });

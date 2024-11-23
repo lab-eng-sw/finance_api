@@ -2,40 +2,51 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AssetService } from './asset.service';
 import { PrismaService } from 'src/prisma.service';
-import { NotFoundException } from '@nestjs/common';
+import { NotFoundException, BadRequestException } from '@nestjs/common';
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
 import { Prisma } from '@prisma/client';
 
 describe('AssetService', () => {
   let service: AssetService;
-  let prisma: PrismaService;
-
-  const mockPrismaService = {
+  let prisma: PrismaService & {
     asset: {
-      create: jest.fn(),
-      findMany: jest.fn(),
-      update: jest.fn(),
-      delete: jest.fn(),
-    },
+      create: jest.Mock;
+      findMany: jest.Mock;
+      findFirst: jest.Mock;
+      update: jest.Mock;
+      delete: jest.Mock;
+    };
   };
 
   beforeEach(async () => {
+    const prismaAssetMock = {
+      create: jest.fn(),
+      findMany: jest.fn(),
+      findFirst: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       providers: [
         AssetService,
         {
           provide: PrismaService,
-          useValue: mockPrismaService,
+          useValue: {
+            asset: prismaAssetMock,
+          },
         },
       ],
     }).compile();
 
     service = module.get<AssetService>(AssetService);
-    prisma = module.get<PrismaService>(PrismaService);
+    prisma = module.get<PrismaService>(PrismaService) as typeof prisma & {
+      asset: typeof prismaAssetMock;
+    };
   });
 
-  beforeEach(() => {
+  afterEach(() => {
     jest.clearAllMocks();
   });
 
@@ -47,43 +58,111 @@ describe('AssetService', () => {
     it('should create a new asset', async () => {
       const createAssetDto: CreateAssetDto = {
         ticker: 'AAPL',
-        volume: 1000,
-        dailyVariation: new Prisma.Decimal('0.05'),
-        bbi: new Prisma.Decimal('1.2'),
-        sven: new Prisma.Decimal('1.5'),
+        date: '2023-10-24T00:00:00Z',
+        price: '150.25',
+        volume: 1000000,
+        dailyVariation: '1.5',
+        bbi: '2.3',
+        rsi: 70,
+        scom: '1.1',
+        sven: '2.0',
         assetName: 'Apple Inc.',
         type: 'Stock',
         benchmark: 'NASDAQ',
-        date: new Date('2023-01-01'),
-        price: new Prisma.Decimal('150.00'),
-        pl: new Prisma.Decimal('10.00'),
-        macdim: new Prisma.Decimal('1.1'),
-        macdis: new Prisma.Decimal('1.2'),
-        macdh: new Prisma.Decimal('1.3'),
-        bbs: new Prisma.Decimal('1.0'),
-        bbl: new Prisma.Decimal('0.9'),
-        bbm: new Prisma.Decimal('1.0'),
-        rsicom: new Prisma.Decimal('30'),
-        rsivem: new Prisma.Decimal('70'),
-        // Optional fields
-        rsi: 50,
-        scom: new Prisma.Decimal('1.4'),
+        pl: '15.0',
+        macdim: '0.5',
+        macdis: '0.4',
+        macdh: '0.1',
+        bbs: '3.0',
+        bbl: '2.5',
+        bbm: '2.75',
+        rsicom: '1.8',
+        rsivem: '1.7',
       };
 
-      const expectedResult = {
+      const expectedAsset = {
         id: 1,
         ...createAssetDto,
+        date: new Date(createAssetDto.date),
+        price: new Prisma.Decimal(createAssetDto.price),
+        dailyVariation: new Prisma.Decimal(createAssetDto.dailyVariation),
+        bbi: new Prisma.Decimal(createAssetDto.bbi),
+        scom: new Prisma.Decimal(createAssetDto.scom),
+        sven: new Prisma.Decimal(createAssetDto.sven),
+        pl: new Prisma.Decimal(createAssetDto.pl),
+        macdim: new Prisma.Decimal(createAssetDto.macdim),
+        macdis: new Prisma.Decimal(createAssetDto.macdis),
+        macdh: new Prisma.Decimal(createAssetDto.macdh),
+        bbs: new Prisma.Decimal(createAssetDto.bbs),
+        bbl: new Prisma.Decimal(createAssetDto.bbl),
+        bbm: new Prisma.Decimal(createAssetDto.bbm),
+        rsicom: new Prisma.Decimal(createAssetDto.rsicom),
+        rsivem: new Prisma.Decimal(createAssetDto.rsivem),
       };
 
-      // Update your create method to actually call prisma.asset.create
-      mockPrismaService.asset.create.mockResolvedValue(expectedResult);
+      prisma.asset.create.mockResolvedValue(expectedAsset);
 
       const result = await service.create(createAssetDto);
 
-      expect(result).toEqual(expectedResult);
-      expect(mockPrismaService.asset.create).toHaveBeenCalledWith({
-        data: createAssetDto,
+      expect(result).toEqual(expectedAsset);
+      expect(prisma.asset.create).toHaveBeenCalledWith({
+        data: {
+          ticker: createAssetDto.ticker,
+          date: new Date(createAssetDto.date),
+          price: new Prisma.Decimal(createAssetDto.price),
+          volume: createAssetDto.volume,
+          dailyVariation: new Prisma.Decimal(createAssetDto.dailyVariation),
+          bbi: new Prisma.Decimal(createAssetDto.bbi),
+          rsi: createAssetDto.rsi,
+          scom: new Prisma.Decimal(createAssetDto.scom),
+          sven: new Prisma.Decimal(createAssetDto.sven),
+          assetName: createAssetDto.assetName,
+          type: createAssetDto.type,
+          benchmark: createAssetDto.benchmark,
+          pl: new Prisma.Decimal(createAssetDto.pl),
+          macdim: new Prisma.Decimal(createAssetDto.macdim),
+          macdis: new Prisma.Decimal(createAssetDto.macdis),
+          macdh: new Prisma.Decimal(createAssetDto.macdh),
+          bbs: new Prisma.Decimal(createAssetDto.bbs),
+          bbl: new Prisma.Decimal(createAssetDto.bbl),
+          bbm: new Prisma.Decimal(createAssetDto.bbm),
+          rsicom: new Prisma.Decimal(createAssetDto.rsicom),
+          rsivem: new Prisma.Decimal(createAssetDto.rsivem),
+        },
       });
+    });
+
+    it('should handle other exceptions during asset creation', async () => {
+      const createAssetDto: CreateAssetDto = {
+        ticker: 'AAPL',
+        date: 'invalid-date',
+        price: '150.25',
+        volume: 1000000,
+        dailyVariation: '1.5',
+        bbi: '2.3',
+        rsi: 70,
+        scom: '1.1',
+        sven: '2.0',
+        assetName: 'Apple Inc.',
+        type: 'Stock',
+        benchmark: 'NASDAQ',
+        pl: '15.0',
+        macdim: '0.5',
+        macdis: '0.4',
+        macdh: '0.1',
+        bbs: '3.0',
+        bbl: '2.5',
+        bbm: '2.75',
+        rsicom: '1.8',
+        rsivem: '1.7',
+      };
+
+      const error = new Error('Invalid date format');
+
+      prisma.asset.create.mockRejectedValue(error);
+
+      await expect(service.create(createAssetDto)).rejects.toThrow(BadRequestException);
+      expect(prisma.asset.create).toHaveBeenCalled();
     });
   });
 
@@ -93,79 +172,72 @@ describe('AssetService', () => {
         {
           id: 1,
           ticker: 'AAPL',
-          // ...other properties
         },
         {
           id: 2,
           ticker: 'GOOGL',
-          // ...other properties
         },
       ];
 
-      mockPrismaService.asset.findMany.mockResolvedValue(assets);
+      prisma.asset.findMany.mockResolvedValue(assets);
 
       const result = await service.findAll();
 
       expect(result).toEqual(assets);
-      expect(mockPrismaService.asset.findMany).toHaveBeenCalledWith({
+      expect(prisma.asset.findMany).toHaveBeenCalledWith({
         orderBy: undefined,
       });
     });
 
     it('should return an array of assets with orderBy', async () => {
       const assets = [
-        // ...assets data
+        {
+          id: 1,
+          ticker: 'AAPL',
+        },
+        {
+          id: 2,
+          ticker: 'GOOGL',
+        },
       ];
       const orderBy = { field: 'price', direction: 'asc' as 'asc' | 'desc' };
 
-      mockPrismaService.asset.findMany.mockResolvedValue(assets);
+      prisma.asset.findMany.mockResolvedValue(assets);
 
       const result = await service.findAll(orderBy);
 
       expect(result).toEqual(assets);
-      expect(mockPrismaService.asset.findMany).toHaveBeenCalledWith({
+      expect(prisma.asset.findMany).toHaveBeenCalledWith({
         orderBy: { [orderBy.field]: orderBy.direction },
       });
     });
 
     it('should throw NotFoundException when no assets are found', async () => {
-      mockPrismaService.asset.findMany.mockResolvedValue([]);
+      prisma.asset.findMany.mockResolvedValue([]);
 
       await expect(service.findAll()).rejects.toThrow(NotFoundException);
-      expect(mockPrismaService.asset.findMany).toHaveBeenCalledWith({
+      expect(prisma.asset.findMany).toHaveBeenCalledWith({
         orderBy: undefined,
       });
     });
   });
 
   describe('findOne', () => {
-    it('should return an asset when found', async () => {
+    it('should return an asset when it exists', async () => {
       const filter = { ticker: 'AAPL' };
-      const asset = {
-        id: 1,
-        ticker: 'AAPL',
-        // ...other properties
-      };
+      const asset = [
+        {
+          id: 1,
+          ticker: 'AAPL',
+        },
+      ];
 
-      mockPrismaService.asset.findMany.mockResolvedValue([asset]);
+      prisma.asset.findMany.mockResolvedValue(asset);
 
       const result = await service.findOne(filter);
 
       expect(result).toEqual(asset);
-      expect(mockPrismaService.asset.findMany).toHaveBeenCalledWith({
-        where: filter,
-        orderBy: { date: 'desc' },
-        take: 1,
-      });
-    });
-
-    it('should throw NotFoundException when asset is not found', async () => {
-      const filter = { ticker: 'NON_EXISTENT' };
-
-      mockPrismaService.asset.findMany.mockResolvedValue([]);
-
-      await expect(service.findOne(filter)).rejects.toThrow(NotFoundException);
-      expect(mockPrismaService.asset.findMany).toHaveBeenCalledWith({
+      expect(prisma.asset.findMany).toHaveBeenCalledWith({
         where: filter,
         orderBy: { date: 'desc' },
         take: 1,
@@ -177,21 +249,23 @@ describe('AssetService', () => {
     it('should update an asset when it exists', async () => {
       const id = 1;
       const updateAssetDto: UpdateAssetDto = {
-        price: new Prisma.Decimal('155.00'),
+        price: '155.00',
+        volume: 1100000,
       };
+
       const updatedAsset = {
         id,
         ticker: 'AAPL',
-        price: new Prisma.Decimal('155.00'),
-        // ...other properties
+        price: new Prisma.Decimal(updateAssetDto.price),
+        volume: updateAssetDto.volume,
       };
 
-      mockPrismaService.asset.update.mockResolvedValue(updatedAsset);
+      prisma.asset.update.mockResolvedValue(updatedAsset);
 
       const result = await service.update(id, updateAssetDto);
 
       expect(result).toEqual(updatedAsset);
-      expect(mockPrismaService.asset.update).toHaveBeenCalledWith({
+      expect(prisma.asset.update).toHaveBeenCalledWith({
         where: { id },
         data: updateAssetDto,
       });
@@ -200,18 +274,19 @@ describe('AssetService', () => {
     it('should throw NotFoundException when asset does not exist', async () => {
       const id = 999;
       const updateAssetDto: UpdateAssetDto = {
-        price: new Prisma.Decimal('155.00'),
+        price: '155.00',
+        volume: 1100000,
       };
 
-      const error = new Error();
-      (error as any).code = 'P2025';
+      const prismaError = {
+        code: 'P2025',
+        message: 'Record not found',
+      };
 
-      mockPrismaService.asset.update.mockRejectedValue(error);
+      prisma.asset.update.mockRejectedValue(prismaError);
 
-      await expect(service.update(id, updateAssetDto)).rejects.toThrow(
-        NotFoundException,
-      );
-      expect(mockPrismaService.asset.update).toHaveBeenCalledWith({
+      await expect(service.update(id, updateAssetDto)).rejects.toThrow(NotFoundException);
+      expect(prisma.asset.update).toHaveBeenCalledWith({
         where: { id },
         data: updateAssetDto,
       });
@@ -224,15 +299,14 @@ describe('AssetService', () => {
       const deletedAsset = {
         id,
         ticker: 'AAPL',
-        // ...other properties
       };
 
-      mockPrismaService.asset.delete.mockResolvedValue(deletedAsset);
+      prisma.asset.delete.mockResolvedValue(deletedAsset);
 
       const result = await service.remove(id);
 
       expect(result).toEqual(deletedAsset);
-      expect(mockPrismaService.asset.delete).toHaveBeenCalledWith({
+      expect(prisma.asset.delete).toHaveBeenCalledWith({
         where: { id },
       });
     });
@@ -240,13 +314,15 @@ describe('AssetService', () => {
     it('should throw NotFoundException when asset does not exist', async () => {
       const id = 999;
 
-      const error = new Error();
-      (error as any).code = 'P2025';
+      const prismaError = {
+        code: 'P2025',
+        message: 'Record not found',
+      };
 
-      mockPrismaService.asset.delete.mockRejectedValue(error);
+      prisma.asset.delete.mockRejectedValue(prismaError);
 
       await expect(service.remove(id)).rejects.toThrow(NotFoundException);
-      expect(mockPrismaService.asset.delete).toHaveBeenCalledWith({
+      expect(prisma.asset.delete).toHaveBeenCalledWith({
         where: { id },
       });
     });

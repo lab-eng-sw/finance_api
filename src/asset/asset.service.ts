@@ -2,17 +2,78 @@ import {
   Injectable,
   NotFoundException,
   InternalServerErrorException,
+  BadRequestException,
 } from '@nestjs/common';
 import { CreateAssetDto } from './dto/create-asset.dto';
 import { UpdateAssetDto } from './dto/update-asset.dto';
 import { PrismaService } from 'src/prisma.service';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class AssetService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(createAssetDto: CreateAssetDto) {
-    return 'This action adds a new asset';
+    const {
+      ticker,
+      date,
+      price,
+      volume,
+      dailyVariation,
+      bbi,
+      rsi,
+      scom,
+      sven,
+      assetName,
+      type,
+      benchmark,
+      pl,
+      macdim,
+      macdis,
+      macdh,
+      bbs,
+      bbl,
+      bbm,
+      rsicom,
+      rsivem,
+    } = createAssetDto;
+
+    try {
+      const asset = await this.prisma.asset.create({
+        data: {
+          ticker,
+          date: new Date(date),
+          price: new Prisma.Decimal(price),
+          volume,
+          dailyVariation: new Prisma.Decimal(dailyVariation),
+          bbi: new Prisma.Decimal(bbi),
+          rsi,
+          scom: scom ? new Prisma.Decimal(scom) : null,
+          sven: new Prisma.Decimal(sven),
+          assetName,
+          type,
+          benchmark,
+          pl: new Prisma.Decimal(pl),
+          macdim: new Prisma.Decimal(macdim),
+          macdis: new Prisma.Decimal(macdis),
+          macdh: new Prisma.Decimal(macdh),
+          bbs: new Prisma.Decimal(bbs),
+          bbl: new Prisma.Decimal(bbl),
+          bbm: new Prisma.Decimal(bbm),
+          rsicom: new Prisma.Decimal(rsicom),
+          rsivem: new Prisma.Decimal(rsivem),
+        },
+      });
+      return asset;
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        throw new BadRequestException('An asset with this identifier already exists.');
+      }
+      throw new BadRequestException('Failed to create asset: ' + error.message);
+    }
   }
 
   async findAll(orderBy?: { field: string; direction: 'asc' | 'desc' }) {

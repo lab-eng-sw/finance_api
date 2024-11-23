@@ -5,3 +5,4 @@ export class CreateOrderDto {
     }[]
     walletId: number;
 }
+

@@ -42,9 +42,9 @@ export class OrderService {
         }
 
         const assetPrice = asset.price;
-        const totalAssetPrice = assetPrice.times(assetInput.quantity);
+        const totalAssetPrice = assetPrice?.times(assetInput.quantity);
 
-        totalOrderPrice = totalOrderPrice.plus(totalAssetPrice);
+        totalOrderPrice = totalOrderPrice?.plus(totalAssetPrice);
         totalQuantity += assetInput.quantity;
 
         orderAssetsData.push({

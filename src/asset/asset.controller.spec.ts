@@ -1,3 +1,4 @@
+// asset.controller.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
 import { AssetController } from './asset.controller';
 import { AssetService } from './asset.service';
@@ -7,17 +8,31 @@ import { Prisma } from '@prisma/client';
 
 describe('AssetController', () => {
   let controller: AssetController;
-  let service: AssetService;
+  let service: AssetService & {
+    create: jest.Mock;
+    findAll: jest.Mock;
+    findOne: jest.Mock;
+    update: jest.Mock;
+    remove: jest.Mock;
+  };
 
-  const mockAssetService = {
-    create: jest.fn(),
-    findAll: jest.fn(),
-    findOne: jest.fn(),
-    update: jest.fn(),
-    remove: jest.fn(),
+  let mockAssetService: {
+    create: jest.Mock;
+    findAll: jest.Mock;
+    findOne: jest.Mock;
+    update: jest.Mock;
+    remove: jest.Mock;
   };
 
   beforeEach(async () => {
+    mockAssetService = {
+      create: jest.fn(),
+      findAll: jest.fn(),
+      findOne: jest.fn(),
+      update: jest.fn(),
+      remove: jest.fn(),
+    };
+
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AssetController],
       providers: [
@@ -29,10 +44,16 @@ describe('AssetController', () => {
     }).compile();
 
     controller = module.get<AssetController>(AssetController);
-    service = module.get<AssetService>(AssetService);
+    service = module.get<AssetService>(AssetService) as AssetService & {
+      create: jest.Mock;
+      findAll: jest.Mock;
+      findOne: jest.Mock;
+      update: jest.Mock;
+      remove: jest.Mock;
+    };
   });
 
-  beforeEach(() => {
+  afterEach(() => {
     jest.clearAllMocks();
   });
 
@@ -44,35 +65,49 @@ describe('AssetController', () => {
     it('should create a new asset', async () => {
       const createAssetDto: CreateAssetDto = {
         ticker: 'AAPL',
+        date: '2023-01-01T00:00:00Z',
+        price: '150.00', 
         volume: 1000,
-        dailyVariation: new Prisma.Decimal('0.05'),
-        bbi: new Prisma.Decimal('1.2'),
-        sven: new Prisma.Decimal('1.5'),
+        dailyVariation: '0.05',
+        bbi: '1.2',
+        rsi: 50,
+        scom: '1.4',
+        sven: '1.5',
         assetName: 'Apple Inc.',
         type: 'Stock',
         benchmark: 'NASDAQ',
-        date: new Date('2023-01-01'),
-        price: new Prisma.Decimal('150.00'),
-        pl: new Prisma.Decimal('10.00'),
-        macdim: new Prisma.Decimal('1.1'),
-        macdis: new Prisma.Decimal('1.2'),
-        macdh: new Prisma.Decimal('1.3'),
-        bbs: new Prisma.Decimal('1.0'),
-        bbl: new Prisma.Decimal('0.9'),
-        bbm: new Prisma.Decimal('1.0'),
-        rsicom: new Prisma.Decimal('30'),
-        rsivem: new Prisma.Decimal('70'),
-        // Optional fields
-        rsi: 50,
-        scom: new Prisma.Decimal('1.4'),
+        pl: '10.00',
+        macdim: '1.1',
+        macdis: '1.2',
+        macdh: '1.3',
+        bbs: '1.0',
+        bbl: '0.9',
+        bbm: '1.0',
+        rsicom: '30',
+        rsivem: '70',
       };
 
       const expectedResult = {
         id: 1,
         ...createAssetDto,
+        date: new Date(createAssetDto.date),
+        price: new Prisma.Decimal(createAssetDto.price),
+        dailyVariation: new Prisma.Decimal(createAssetDto.dailyVariation),
+        bbi: new Prisma.Decimal(createAssetDto.bbi),
+        scom: new Prisma.Decimal(createAssetDto.scom),
+        sven: new Prisma.Decimal(createAssetDto.sven),
+        pl: new Prisma.Decimal(createAssetDto.pl),
+        macdim: new Prisma.Decimal(createAssetDto.macdim),
+        macdis: new Prisma.Decimal(createAssetDto.macdis),
+        macdh: new Prisma.Decimal(createAssetDto.macdh),
+        bbs: new Prisma.Decimal(createAssetDto.bbs),
+        bbl: new Prisma.Decimal(createAssetDto.bbl),
+        bbm: new Prisma.Decimal(createAssetDto.bbm),
+        rsicom: new Prisma.Decimal(createAssetDto.rsicom),
+        rsivem: new Prisma.Decimal(createAssetDto.rsivem),
       };
 
-      mockAssetService.create.mockResolvedValue(expectedResult);
+      service.create.mockResolvedValue(expectedResult);
 
       const result = await controller.create(createAssetDto);
 
@@ -87,54 +122,18 @@ describe('AssetController', () => {
         {
           id: 1,
           ticker: 'AAPL',
-          volume: 1000,
-          dailyVariation: new Prisma.Decimal('0.05'),
-          bbi: new Prisma.Decimal('1.2'),
-          sven: new Prisma.Decimal('1.5'),
-          assetName: 'Apple Inc.',
-          type: 'Stock',
-          benchmark: 'NASDAQ',
-          date: new Date('2023-01-01'),
+          date: new Date('2023-01-01T00:00:00Z'),
           price: new Prisma.Decimal('150.00'),
-          pl: new Prisma.Decimal('10.00'),
-          macdim: new Prisma.Decimal('1.1'),
-          macdis: new Prisma.Decimal('1.2'),
-          macdh: new Prisma.Decimal('1.3'),
-          bbs: new Prisma.Decimal('1.0'),
-          bbl: new Prisma.Decimal('0.9'),
-          bbm: new Prisma.Decimal('1.0'),
-          rsicom: new Prisma.Decimal('30'),
-          rsivem: new Prisma.Decimal('70'),
-          rsi: 50,
-          scom: new Prisma.Decimal('1.4'),
         },
         {
           id: 2,
           ticker: 'GOOGL',
-          volume: 500,
-          dailyVariation: new Prisma.Decimal('-0.03'),
-          bbi: new Prisma.Decimal('1.1'),
-          sven: new Prisma.Decimal('1.2'),
-          assetName: 'Alphabet Inc.',
-          type: 'Stock',
-          benchmark: 'NASDAQ',
-          date: new Date('2023-01-02'),
+          date: new Date('2023-01-02T00:00:00Z'),
           price: new Prisma.Decimal('2800.00'),
-          pl: new Prisma.Decimal('20.00'),
-          macdim: new Prisma.Decimal('1.0'),
-          macdis: new Prisma.Decimal('1.1'),
-          macdh: new Prisma.Decimal('1.2'),
-          bbs: new Prisma.Decimal('0.9'),
-          bbl: new Prisma.Decimal('0.8'),
-          bbm: new Prisma.Decimal('0.9'),
-          rsicom: new Prisma.Decimal('40'),
-          rsivem: new Prisma.Decimal('60'),
-          rsi: 55,
-          scom: new Prisma.Decimal('1.3'),
         },
       ];
 
-      mockAssetService.findAll.mockResolvedValue(assets);
+      service.findAll.mockResolvedValue(assets);
 
       const result = await controller.findAll();
 
@@ -142,40 +141,16 @@ describe('AssetController', () => {
       expect(service.findAll).toHaveBeenCalledWith(undefined);
     });
 
-    it('should return an array of assets with orderBy', async () => {
+    it('should return an array of assets with A', async () => {
       const assets = [
-        {
-          id: 1,
-          ticker: 'AAPL',
-          volume: 1000,
-          dailyVariation: new Prisma.Decimal('0.05'),
-          bbi: new Prisma.Decimal('1.2'),
-          sven: new Prisma.Decimal('1.5'),
-          assetName: 'Apple Inc.',
-          type: 'Stock',
-          benchmark: 'NASDAQ',
-          date: new Date('2023-01-01'),
-          price: new Prisma.Decimal('150.00'),
-          pl: new Prisma.Decimal('10.00'),
-          macdim: new Prisma.Decimal('1.1'),
-          macdis: new Prisma.Decimal('1.2'),
-          macdh: new Prisma.Decimal('1.3'),
-          bbs: new Prisma.Decimal('1.0'),
-          bbl: new Prisma.Decimal('0.9'),
-          bbm: new Prisma.Decimal('1.0'),
-          rsicom: new Prisma.Decimal('30'),
-          rsivem: new Prisma.Decimal('70'),
-          rsi: 50,
-          scom: new Prisma.Decimal('1.4'),
-        },
-        // ...other assets
+        // ... assets data
       ];
 
       const field = 'price';
       const direction: 'asc' | 'desc' = 'asc';
       const orderBy = { field, direction };
 
-      mockAssetService.findAll.mockResolvedValue(assets);
+      service.findAll.mockResolvedValue(assets);
 
       const result = await controller.findAll(field, direction);
 
@@ -190,29 +165,12 @@ describe('AssetController', () => {
       const asset = {
         id: 1,
         ticker: 'AAPL',
-        volume: 1000,
-        dailyVariation: new Prisma.Decimal('0.05'),
-        bbi: new Prisma.Decimal('1.2'),
-        sven: new Prisma.Decimal('1.5'),
-        assetName: 'Apple Inc.',
-        type: 'Stock',
-        benchmark: 'NASDAQ',
-        date: new Date('2023-01-01'),
+        date: new Date('2023-01-01T00:00:00Z'),
         price: new Prisma.Decimal('150.00'),
-        pl: new Prisma.Decimal('10.00'),
-        macdim: new Prisma.Decimal('1.1'),
-        macdis: new Prisma.Decimal('1.2'),
-        macdh: new Prisma.Decimal('1.3'),
-        bbs: new Prisma.Decimal('1.0'),
-        bbl: new Prisma.Decimal('0.9'),
-        bbm: new Prisma.Decimal('1.0'),
-        rsicom: new Prisma.Decimal('30'),
-        rsivem: new Prisma.Decimal('70'),
-        rsi: 50,
-        scom: new Prisma.Decimal('1.4'),
+        // ... other properties
       };
 
-      mockAssetService.findOne.mockResolvedValue(asset);
+      service.findOne.mockResolvedValue(asset);
 
       const result = await controller.findOne(filter);
 
@@ -225,36 +183,20 @@ describe('AssetController', () => {
     it('should update an asset', async () => {
       const id = '1';
       const updateAssetDto: UpdateAssetDto = {
-        price: new Prisma.Decimal('155.00'),
+        price: '155.00',
         volume: 1100,
       };
 
       const updatedAsset = {
         id: 1,
         ticker: 'AAPL',
-        volume: 1100,
-        dailyVariation: new Prisma.Decimal('0.05'),
-        bbi: new Prisma.Decimal('1.2'),
-        sven: new Prisma.Decimal('1.5'),
-        assetName: 'Apple Inc.',
-        type: 'Stock',
-        benchmark: 'NASDAQ',
-        date: new Date('2023-01-01'),
+        date: new Date('2023-01-01T00:00:00Z'),
         price: new Prisma.Decimal('155.00'),
-        pl: new Prisma.Decimal('10.00'),
-        macdim: new Prisma.Decimal('1.1'),
-        macdis: new Prisma.Decimal('1.2'),
-        macdh: new Prisma.Decimal('1.3'),
-        bbs: new Prisma.Decimal('1.0'),
-        bbl: new Prisma.Decimal('0.9'),
-        bbm: new Prisma.Decimal('1.0'),
-        rsicom: new Prisma.Decimal('30'),
-        rsivem: new Prisma.Decimal('70'),
-        rsi: 50,
-        scom: new Prisma.Decimal('1.4'),
+        volume: 1100,
+        // ... other properties
       };
 
-      mockAssetService.update.mockResolvedValue(updatedAsset);
+      service.update.mockResolvedValue(updatedAsset);
 
       const result = await controller.update(id, updateAssetDto);
 
@@ -266,13 +208,17 @@ describe('AssetController', () => {
   describe('remove', () => {
     it('should remove an asset', async () => {
       const id = '1';
-      const expectedResult = { message: `Asset #${id} removed` };
+      const deletedAsset = {
+        id: 1,
+        ticker: 'AAPL',
+        // ... other properties
+      };
 
-      mockAssetService.remove.mockResolvedValue(expectedResult);
+      service.remove.mockResolvedValue(deletedAsset);
 
       const result = await controller.remove(id);
 
-      expect(result).toEqual(expectedResult);
+      expect(result).toEqual(deletedAsset);
       expect(service.remove).toHaveBeenCalledWith(+id);
     });
   });

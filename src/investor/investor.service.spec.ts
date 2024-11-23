@@ -1,3 +1,4 @@
+// investor.service.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
 import { InvestorService } from './investor.service';
 import { PrismaService } from 'src/prisma.service';
@@ -43,6 +44,31 @@ describe('InvestorService', () => {
     expect(service).toBeDefined();
   });
 
+  describe('create', () => {
+    it('should create an investor successfully', async () => {
+      const createInvestorDto: CreateInvestorDto = {
+        email: 'test@example.com',
+        name: 'John Doe',
+        password: 'password123',
+        tax_id: '123-45-6789',
+      };
+
+      const createdInvestor: Investor = {
+        id: 1,
+        ...createInvestorDto,
+      };
+
+      mockPrismaService.investor.create.mockResolvedValue(createdInvestor);
+
+      const result = await service.create(createInvestorDto);
+
+      expect(result).toEqual(createdInvestor);
+      expect(mockPrismaService.investor.create).toHaveBeenCalledWith({
+        data: createInvestorDto,
+      });
+    });
+
+  });
 
   describe('findAll', () => {
     it('should return an array of investors', async () => {
@@ -145,6 +171,7 @@ describe('InvestorService', () => {
         data: {},
       });
     });
+
   });
 
   describe('remove', () => {
