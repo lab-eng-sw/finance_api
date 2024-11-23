@@ -35,19 +35,25 @@ export class WalletService {
 
   async update(id: number, updateWalletDto: UpdateWalletDto) {
     const { assets } = updateWalletDto;
-  
+
     return await this.prisma.$transaction(async (prisma) => {
+      let totalInvestment = new Prisma.Decimal(0);
+
       for (const assetData of assets) {
         const { ticker, quantity } = assetData;
-  
+
         const asset = await prisma.asset.findFirst({
           where: { ticker },
         });
-  
+
         if (!asset) {
-          throw new Error(`Asset with ticker ${ticker} not found`);
+          throw new NotFoundException(`Asset with ticker ${ticker} not found`);
         }
-  
+
+        const assetPrice = asset.price;
+        const investmentAmount = assetPrice.times(quantity);
+        totalInvestment = totalInvestment.plus(investmentAmount);
+
         await prisma.assetWallet.upsert({
           where: {
             assetId_walletId: {
@@ -56,7 +62,9 @@ export class WalletService {
             },
           },
           update: {
-            quantity,
+            quantity: {
+              increment: quantity,
+            },
           },
           create: {
             assetId: asset.id,
@@ -66,19 +74,25 @@ export class WalletService {
           },
         });
       }
-  
-      return await prisma.wallet.findUnique({
+
+      await prisma.wallet.update({
+        where: { id },
+        data: {
+          totalInvested: {
+            increment: totalInvestment,
+          },
+        },
+      });
+
+      return prisma.wallet.findUnique({
         where: { id },
         include: {
-          assets: {
-            include: {
-              asset: true,
-            },
-          },
+          assets: true,
         },
       });
     });
   }
+
   async remove(id: number) {
     try {
       const deletedWallet = await this.prisma.wallet.delete({

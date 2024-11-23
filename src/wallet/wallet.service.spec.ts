@@ -226,7 +226,6 @@ describe('WalletService', () => {
         },
       });
 
-      // Asserting that wallet.findUnique was called correctly
       expect(mockPrismaService.wallet.findUnique).toHaveBeenCalledWith({
         where: { id },
         include: {

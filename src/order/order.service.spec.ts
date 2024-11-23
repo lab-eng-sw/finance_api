@@ -150,15 +150,13 @@ describe('WalletService', () => {
       const assetAAPL = { id: 1, ticker: 'AAPL' };
       const assetGOOGL = { id: 2, ticker: 'GOOGL' };
 
-      // Mocking asset.findFirst to return assets based on ticker
       mockPrismaService.asset.findFirst
         .mockResolvedValueOnce(assetAAPL)
         .mockResolvedValueOnce(assetGOOGL);
 
-      // Mocking assetWallet.upsert to resolve without returning a value
+
       mockPrismaService.assetWallet.upsert.mockResolvedValue(null);
 
-      // Mocking wallet.findUnique to return the updated wallet
       const updatedWallet = {
         id: id,
         totalInvested: new Prisma.Decimal(1000),
@@ -177,7 +175,6 @@ describe('WalletService', () => {
       };
       mockPrismaService.wallet.findUnique.mockResolvedValue(updatedWallet);
 
-      // Mocking $transaction to execute the callback immediately
       mockPrismaService.$transaction.mockImplementation(async (callback) => {
         return await callback(mockPrismaService);
       });
@@ -186,7 +183,6 @@ describe('WalletService', () => {
 
       expect(result).toEqual(updatedWallet);
 
-      // Asserting that asset.findFirst was called correctly
       expect(mockPrismaService.asset.findFirst).toHaveBeenCalledTimes(2);
       expect(mockPrismaService.asset.findFirst).toHaveBeenCalledWith({
         where: { ticker: 'AAPL' },
@@ -195,7 +191,6 @@ describe('WalletService', () => {
         where: { ticker: 'GOOGL' },
       });
 
-      // Asserting that assetWallet.upsert was called correctly
       expect(mockPrismaService.assetWallet.upsert).toHaveBeenCalledTimes(2);
       expect(mockPrismaService.assetWallet.upsert).toHaveBeenCalledWith({
         where: {
@@ -232,7 +227,6 @@ describe('WalletService', () => {
         },
       });
 
-      // Asserting that wallet.findUnique was called correctly
       expect(mockPrismaService.wallet.findUnique).toHaveBeenCalledWith({
         where: { id },
         include: {
