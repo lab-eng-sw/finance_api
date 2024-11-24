@@ -1,11 +1,10 @@
-// investor.service.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
 import { InvestorService } from './investor.service';
 import { PrismaService } from 'src/prisma.service';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import {  NotFoundException } from '@nestjs/common';
 import { CreateInvestorDto } from './dto/create-investor.dto';
 import { UpdateInvestorDto } from './dto/update-investor.dto';
-import { Prisma, Investor } from '@prisma/client';
+import { Investor } from '@prisma/client';
 
 describe('InvestorService', () => {
   let service: InvestorService;

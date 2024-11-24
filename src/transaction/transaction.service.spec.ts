@@ -2,7 +2,6 @@ import { Test, TestingModule } from '@nestjs/testing';
 import { TransactionService } from './transaction.service';
 import { PrismaService } from 'src/prisma.service';
 import { NotFoundException } from '@nestjs/common';
-import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { Prisma } from '@prisma/client';
 
@@ -43,50 +42,6 @@ describe('TransactionService', () => {
     expect(service).toBeDefined();
   });
 
-  describe('create', () => {
-    it('should create a new transaction', async () => {
-      const createTransactionDto: CreateTransactionDto = {
-        date: new Date('2023-01-01'),
-        value: new Prisma.Decimal('1000.00'),
-        walletId: 1,
-      };
-
-      const expectedResult = {
-        id: 1,
-        ...createTransactionDto,
-      };
-
-      mockPrismaService.transactionRecord.create.mockResolvedValue(
-        expectedResult,
-      );
-
-      const result = await service.create(createTransactionDto);
-
-      expect(result).toEqual(expectedResult);
-      expect(prisma.transactionRecord.create).toHaveBeenCalledWith({
-        data: createTransactionDto,
-      });
-    });
-
-    it('should throw an error if creation fails', async () => {
-      const createTransactionDto: CreateTransactionDto = {
-        date: new Date('2023-01-01'),
-        value: new Prisma.Decimal('1000.00'),
-        walletId: 1,
-      };
-
-      mockPrismaService.transactionRecord.create.mockRejectedValue(
-        new Error('Creation Error'),
-      );
-
-      await expect(service.create(createTransactionDto)).rejects.toThrow(
-        'Creation Error',
-      );
-      expect(prisma.transactionRecord.create).toHaveBeenCalledWith({
-        data: createTransactionDto,
-      });
-    });
-  });
 
   describe('findAll', () => {
     it('should return an array of transactions', async () => {

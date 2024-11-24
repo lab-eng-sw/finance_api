@@ -28,6 +28,8 @@ export class OrderService {
       let totalOrderPrice = new Prisma.Decimal(0);
       let totalQuantity = 0;
 
+
+
       for (const assetInput of assets) {
 
         const asset = await prisma.asset.findFirst({

@@ -28,6 +28,7 @@ export class WalletService {
 
   async findAll() {
     try {
+      console.log('findAll');
       const wallets = await this.prisma.wallet.findMany();
       if (!wallets.length) {
         throw new NotFoundException('No wallets found');
@@ -45,7 +46,18 @@ export class WalletService {
     try {
       const wallet = await this.prisma.wallet.findUnique({
         where: { id },
-        include: { assets: true },
+        include: {
+          assets: {
+            select: {
+              id: true,
+              boughtAt: true,
+              quantity: true,
+              asset: {
+                select: { id: true, ticker: true, price: true },
+              },
+            },
+          },
+        },
       });
       if (!wallet) {
         throw new NotFoundException(`Wallet with ID ${id} not found`);
@@ -66,7 +78,7 @@ export class WalletService {
       const wallet = await this.prisma.wallet.findUnique({
         where: { id },
       });
-    
+
       if (!wallet) {
         throw new NotFoundException(`Wallet with ID ${id} not found`);
       }

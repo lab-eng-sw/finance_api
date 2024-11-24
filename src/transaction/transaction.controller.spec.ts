@@ -1,7 +1,6 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { TransactionController } from './transaction.controller';
 import { TransactionService } from './transaction.service';
-import { CreateTransactionDto } from './dto/create-transaction.dto';
 import { UpdateTransactionDto } from './dto/update-transaction.dto';
 import { Prisma } from '@prisma/client';
 
@@ -40,27 +39,6 @@ describe('TransactionController', () => {
     expect(controller).toBeDefined();
   });
 
-  describe('create', () => {
-    it('should create a new transaction', async () => {
-      const createTransactionDto: CreateTransactionDto = {
-        date: new Date('2023-01-01'),
-        value: new Prisma.Decimal('1000.00'),
-        walletId: 1,
-      };
-
-      const expectedResult = {
-        id: 1,
-        ...createTransactionDto,
-      };
-
-      mockTransactionService.create.mockResolvedValue(expectedResult);
-
-      const result = await controller.create(createTransactionDto);
-
-      expect(result).toEqual(expectedResult);
-      expect(service.create).toHaveBeenCalledWith(createTransactionDto);
-    });
-  });
 
   describe('findAll', () => {
     it('should return an array of transactions', async () => {

@@ -1,4 +1,3 @@
-// wallet.service.spec.ts
 import { Test, TestingModule } from '@nestjs/testing';
 import { WalletService } from './wallet.service';
 import { PrismaService } from 'src/prisma.service';
@@ -59,9 +58,7 @@ describe('WalletService', () => {
     }).compile();
 
     service = module.get<WalletService>(WalletService);
-    prisma = module.get<PrismaService>(
-      PrismaService,
-    ) as any;
+    prisma = module.get<PrismaService>(PrismaService) as any;
   });
 
   afterEach(() => {
@@ -112,7 +109,6 @@ describe('WalletService', () => {
         data: createWalletDto,
       });
     });
-
   });
 
   describe('findAll', () => {
@@ -163,7 +159,24 @@ describe('WalletService', () => {
         totalInvested: new Prisma.Decimal(1000),
         active: false,
         investorId: 1,
-        assets: [],
+        assets: [
+          {
+            quantity: 10,
+            asset: {
+              id: 1,
+              ticker: 'AAPL',
+              price: new Prisma.Decimal(150),
+            },
+          },
+          {
+            quantity: 5,
+            asset: {
+              id: 2,
+              ticker: 'GOOGL',
+              price: new Prisma.Decimal(2000),
+            },
+          },
+        ],
       };
       prisma.wallet.findUnique.mockResolvedValue(wallet);
 
@@ -172,7 +185,22 @@ describe('WalletService', () => {
       expect(result).toEqual(wallet);
       expect(prisma.wallet.findUnique).toHaveBeenCalledWith({
         where: { id: 1 },
-        include: { assets: true },
+        include: {
+          assets: {
+            select: {
+              id: true,
+              quantity: true,
+              boughtAt: true,
+              asset: {
+                select: {
+                  id: true,
+                  ticker: true,
+                  price: true,
+                },
+              },
+            },
+          },
+        },
       });
     });
 
@@ -182,7 +210,22 @@ describe('WalletService', () => {
       await expect(service.findOne(1)).rejects.toThrow(NotFoundException);
       expect(prisma.wallet.findUnique).toHaveBeenCalledWith({
         where: { id: 1 },
-        include: { assets: true },
+        include: {
+          assets: {
+            select: {
+              id: true,
+              quantity: true,
+              boughtAt: true,
+              asset: {
+                select: {
+                  id: true,
+                  ticker: true,
+                  price: true,
+                },
+              },
+            },
+          },
+        },
       });
     });
 
@@ -194,7 +237,22 @@ describe('WalletService', () => {
       );
       expect(prisma.wallet.findUnique).toHaveBeenCalledWith({
         where: { id: 1 },
-        include: { assets: true },
+        include: {
+          assets: {
+            select: {
+              id: true,
+              quantity: true,
+              boughtAt: true,
+              asset: {
+                select: {
+                  id: true,
+                  ticker: true,
+                  price: true,
+                },
+              },
+            },
+          },
+        },
       });
     });
   });
@@ -318,21 +376,20 @@ describe('WalletService', () => {
       });
     });
 
-
     it('should throw error when asset quantity is negative', async () => {
       const id = 1;
       const updateWalletDto: UpdateWalletDto = {
         assets: [{ ticker: 'AAPL', quantity: -10 }],
       };
-    
+
       prisma.$transaction.mockImplementation(async (callback) => {
         return await callback(prisma);
       });
-    
+
       await expect(service.update(id, updateWalletDto)).rejects.toThrow(
         NotFoundException,
       );
-    
+
       expect(prisma.asset.findFirst).not.toHaveBeenCalled();
       expect(prisma.assetWallet.upsert).not.toHaveBeenCalled();
     });
