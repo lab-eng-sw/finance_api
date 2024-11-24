@@ -7,6 +7,10 @@ async function bootstrap() {
   app.useGlobalFilters(new AllExceptionsFilter());
   await app.listen(process.env.PORT ?? 3000);
 
-  app.enableCors()
+  app.enableCors({
+    origin: '*',
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    allowedHeaders: 'Content-Type',
+  });
 }
 bootstrap();

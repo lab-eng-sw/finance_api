@@ -3,7 +3,6 @@ import { WalletService } from './wallet.service';
 import { PrismaService } from 'src/prisma.service';
 import {
   NotFoundException,
-  BadRequestException,
   InternalServerErrorException,
 } from '@nestjs/common';
 import { CreateWalletDto } from './dto/create-wallet.dto';
